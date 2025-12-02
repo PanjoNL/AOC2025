@@ -24,6 +24,15 @@ type
     function SolveB: Variant; override;
   end;
 
+  TAdventOfCodeDay2 = class(TAdventOfCode)
+  private
+    ResultA, ResultB: int64;
+  protected
+    procedure BeforeSolve; override;
+    function SolveA: Variant; override;
+    function SolveB: Variant; override;
+  end;
+
   TAdventOfCodeDay = class(TAdventOfCode)
   private
   protected
@@ -58,8 +67,8 @@ begin
 
     PrevIndex := CurrentIndex;
     case IndexText(Rotation, ['L', 'R']) of
-      0: CurrentIndex := CurrentIndex - Distance;
-      1: CurrentIndex := CurrentIndex + Distance;
+      0: Dec(CurrentIndex, Distance);
+      1: Inc(CurrentIndex, Distance);
     else
       Assert(False, 'Unkown rotation ' + Rotation);
     end;
@@ -82,6 +91,92 @@ end;
 function TAdventOfCodeDay1.SolveB: Variant;
 begin
    Result := ResultB;
+end;
+{$ENDREGION}
+{$REGION 'TAdventOfCodeDay2'}
+procedure TAdventOfCodeDay2.BeforeSolve;
+
+  function IsValidA(aId: int64): boolean;
+  var
+    Length, HalfLength: integer;
+    Id: string;
+  begin
+    id := aId.ToString;
+    Length := id.Length;
+
+    if Odd(length) then
+      Exit(False);
+
+    HalfLength := Length shr 1;
+    Result := copy(id, 1, HalfLength) = copy(id, HalfLength + 1, Length-1);
+  end;
+
+  function IsValidB(aId: int64): boolean;
+  var
+    IdLength, SubIdLength, RemainingIdLength: integer;
+    SubId, RemainingId: int64;
+    Valid: boolean;
+  begin
+    Result := False;
+    IdLength := aId.ToString.Length;
+
+    for SubIdLength := 1 to (IdLength shr 1) do
+    begin
+      if IdLength mod SubIdLength <> 0 then
+        Continue;
+
+      RemainingIdLength := IdLength - SubIdLength;
+      SubId := aId div Base10Table[RemainingIdLength];
+      RemainingId := aId - SubId * Base10Table[RemainingIdLength];
+
+      Valid := True;
+      while (RemainingIdLength > 0) and valid do
+      begin
+        valid := RemainingId div Base10Table[RemainingIdLength-SubIdLength] = SubId;
+        RemainingIdLength := RemainingIdLength - SubIdLength;
+        RemainingId := RemainingId - SubId * Base10Table[RemainingIdLength];
+      end;
+
+      if Valid then
+        Exit(True);
+    end;
+  end;
+
+var
+  s: string;
+  split, Split2: TStringDynArray;
+  i,j,x: int64;
+begin
+  ResultA := 0;
+  ResultB := 0;
+
+  split := SplitString(FInput[0], ',');
+  for s in split do
+  begin
+    Split2 := SplitString(s, '-');
+
+    i:= Split2[0].ToInt64;
+    j:= Split2[1].ToInt64;
+
+    for x := i to j do
+    begin
+      if IsValidA(x) then
+        Inc(ResultA, x);
+
+      if IsValidB(x) then
+        Inc(ResultB, x);
+    end;
+  end;
+end;
+
+function TAdventOfCodeDay2.SolveA: Variant;
+begin
+  Result := ResultA;
+end;
+
+function TAdventOfCodeDay2.SolveB: Variant;
+begin
+  Result := ResultB;
 end;
 {$ENDREGION}
 
@@ -119,6 +214,6 @@ end;
 initialization
 
 RegisterClasses([
-  TAdventOfCodeDay1]);
+  TAdventOfCodeDay1,TAdventOfCodeDay2]);
 
 end.
