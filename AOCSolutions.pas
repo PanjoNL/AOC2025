@@ -96,76 +96,86 @@ end;
 {$REGION 'TAdventOfCodeDay2'}
 procedure TAdventOfCodeDay2.BeforeSolve;
 
-  function IsValidA(aId: int64): boolean;
+  function SumIdsA(SeenInvalidIds: TDictionary<int64, boolean>; aNumbersLeft, aNumbersUsed: integer; aCurrentId, LowBound, HighBound: int64): int64;
   var
-    Length, HalfLength: integer;
-    Id: string;
+    i, ConstructedId: int64;
   begin
-    id := aId.ToString;
-    Length := id.Length;
+    Result := 0;
 
-    if Odd(length) then
-      Exit(False);
+    if aNumbersLeft = 0 then
+    begin
+      ConstructedId := aCurrentId*Base10Table[aNumbersUsed] + aCurrentId;
+      if InRange(ConstructedId, LowBound, HighBound) then
+      begin
+        SeenInvalidIds.AddOrSetValue(ConstructedId, True);
+        Result := ConstructedId;
+      end;
+      exit;
+    end;
 
-    HalfLength := Length shr 1;
-    Result := copy(id, 1, HalfLength) = copy(id, HalfLength + 1, Length-1);
+    for i := ifthen(aCurrentId = 0, 1, 0) to 9 do
+      inc(Result, SumIdsA(SeenInvalidIds, aNumbersLeft-1, aNumbersUsed+1, aCurrentId*10+i, LowBound, HighBound));
   end;
 
-  function IsValidB(aId: int64): boolean;
+  function SumIdsB(SeenInvalidIds: TDictionary<int64, boolean>; aTotalNumbers, aNumbersUsed: integer; aCurrentId, LowBound, HighBound: int64): int64;
   var
-    IdLength, SubIdLength, RemainingIdLength: integer;
-    SubId, RemainingId: int64;
-    Valid: boolean;
+    i, ConstructedId: int64;
+    TmpTotalNumbers: integer;
   begin
-    Result := False;
-    IdLength := aId.ToString.Length;
+    Result := 0;
 
-    for SubIdLength := 1 to (IdLength shr 1) do
+    if (aNumbersUsed*2+1) > aTotalNumbers then // -1 since where reusing the id's found in part A
+      Exit;
+
+    if aNumbersUsed > 0 then
     begin
-      if IdLength mod SubIdLength <> 0 then
-        Continue;
+      ConstructedId := aCurrentId;
 
-      RemainingIdLength := IdLength - SubIdLength;
-      SubId := aId div Base10Table[RemainingIdLength];
-      RemainingId := aId - SubId * Base10Table[RemainingIdLength];
-
-      Valid := True;
-      while (RemainingIdLength > 0) and valid do
+      TmpTotalNumbers := aNumbersUsed;
+      while TmpTotalNumbers < aTotalNumbers do
       begin
-        valid := RemainingId div Base10Table[RemainingIdLength-SubIdLength] = SubId;
-        RemainingIdLength := RemainingIdLength - SubIdLength;
-        RemainingId := RemainingId - SubId * Base10Table[RemainingIdLength];
-      end;
+        Inc(TmpTotalNumbers, aNumbersUsed);
+        ConstructedId := ConstructedId * Base10Table[aNumbersUsed] + aCurrentId;
 
-      if Valid then
-        Exit(True);
+        if InRange(ConstructedId, LowBound, HighBound) and not SeenInvalidIds.ContainsKey(ConstructedId) then
+        begin
+          SeenInvalidIds.Add(ConstructedId, true);
+          inc(Result, ConstructedId);
+        end;
+      end;
     end;
+
+    for i := ifthen(aCurrentId = 0, 1, 0) to 9 do
+      inc(Result, SumIdsB(SeenInvalidIds, aTotalNumbers, aNumbersUsed+1, aCurrentId*10+i, LowBound, HighBound));
   end;
 
 var
   s: string;
   split, Split2: TStringDynArray;
-  i,j,x: int64;
+  LowBound,HighBound,InvalidIdsPartA: int64;
+  SeenInvalidIds: TDictionary<int64, boolean>;
 begin
   ResultA := 0;
   ResultB := 0;
 
-  split := SplitString(FInput[0], ',');
-  for s in split do
-  begin
-    Split2 := SplitString(s, '-');
-
-    i:= Split2[0].ToInt64;
-    j:= Split2[1].ToInt64;
-
-    for x := i to j do
+  SeenInvalidIds := TDictionary<int64, boolean>.Create;
+  try
+    split := SplitString(FInput[0], ',');
+    for s in split do
     begin
-      if IsValidA(x) then
-        Inc(ResultA, x);
+      Split2 := SplitString(s, '-');
+      SeenInvalidIds.Clear;
 
-      if IsValidB(x) then
-        Inc(ResultB, x);
+      LowBound:= Split2[0].ToInt64;
+      HighBound:= Split2[1].ToInt64;
+
+      InvalidIdsPartA := SumIdsA(SeenInvalidIds, Split2[1].Length shr 1, 0, 0, LowBound, HighBound);
+      Inc(ResultA, InvalidIdsPartA);
+      Inc(ResultB, InvalidIdsPartA); // Reuse the found ids of part A so we kan skip one loop in the b part
+      Inc(ResultB, SumIdsB(SeenInvalidIds, Split2[1].Length, 0, 0, LowBound, HighBound));
     end;
+  finally
+    SeenInvalidIds.Free;
   end;
 end;
 
