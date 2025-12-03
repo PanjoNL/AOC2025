@@ -33,6 +33,17 @@ type
     function SolveB: Variant; override;
   end;
 
+  TAdventOfCodeDay3 = class(TAdventOfCode)
+  private
+    FBatteryBanks: TAocGrid<integer>;
+    function FindBestBatteryConfiguration(aNumberOfBatteries: integer): int64;
+  protected
+    procedure BeforeSolve; override;
+    procedure AfterSolve; override;
+    function SolveA: Variant; override;
+    function SolveB: Variant; override;
+  end;
+
   TAdventOfCodeDay = class(TAdventOfCode)
   private
   protected
@@ -189,14 +200,68 @@ begin
   Result := ResultB;
 end;
 {$ENDREGION}
+{$REGION 'TAdventOfCodeDay3'}
+procedure TAdventOfCodeDay3.BeforeSolve;
+begin
+  inherited;
+  FBatteryBanks := TAocGridHelper.CreateIntegerGrid(FInput, False);
+end;
+
+procedure TAdventOfCodeDay3.AfterSolve;
+begin
+  inherited;
+  FBatteryBanks.Free;
+end;
+
+function TAdventOfCodeDay3.FindBestBatteryConfiguration(aNumberOfBatteries: integer): int64;
+
+  function FindBestBattery(aBatteryId, aStartIndex, aBatterysLeft: integer; aCurrentJolts: int64): int64;
+  var
+    BestBattery, TempBattery: int64;
+    BestBetteryPosistion, i: integer;
+  begin
+    if aBatterysLeft < 0 then
+      Exit(aCurrentJolts);
+
+    BestBattery := -1;
+    BestBetteryPosistion := 0;
+    for i := aStartIndex to FBatteryBanks.MaxX-aBatterysLeft-1 do
+    begin
+      TempBattery := FBatteryBanks.GetValue(i, aBatteryId);
+
+      if TempBattery > BestBattery then
+      begin
+        BestBattery := TempBattery;
+        BestBetteryPosistion := i;
+      end;
+    end;
+
+    Result := FindBestBattery(aBatteryId, BestBetteryPosistion+1, aBatterysLeft-1, aCurrentJolts*10+BestBattery);
+  end;
+
+var
+  batteryId: integer;
+begin
+  Result := 0;
+  for batteryId := 0 to FBatteryBanks.MaxY-1 do
+    Inc(Result, FindBestBattery(batteryId, 0, aNumberOfBatteries-1, 0));
+end;
+
+function TAdventOfCodeDay3.SolveA: Variant;
+begin
+  Result := FindBestBatteryConfiguration(2);
+end;
+
+function TAdventOfCodeDay3.SolveB: Variant;
+begin
+  Result := FindBestBatteryConfiguration(12);
+end;
+{$ENDREGION}
 
 {$REGION 'TAdventOfCodeDay'}
 procedure TAdventOfCodeDay.BeforeSolve;
-
 begin
   inherited;
-
-
 end;
 
 procedure TAdventOfCodeDay.AfterSolve;
@@ -224,6 +289,6 @@ end;
 initialization
 
 RegisterClasses([
-  TAdventOfCodeDay1,TAdventOfCodeDay2]);
+  TAdventOfCodeDay1,TAdventOfCodeDay2,TAdventOfCodeDay3]);
 
 end.
