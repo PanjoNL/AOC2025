@@ -47,8 +47,9 @@ type
   TAdventOfCodeDay4 = class(TAdventOfCode)
   private
     FWareHouse: TAocGrid<boolean>;
+    FWareHouseFloor: TAocGrid<integer>;
+    FPaperRolesToRemove: TQueue<TPosition>;
     function WareHouseTileToBool(const aChar: Char): boolean;
-    function IsPaperRoleAccasible(const aPosition: TPosition): boolean; inline;
   protected
     procedure BeforeSolve; override;
     procedure AfterSolve; override;
@@ -274,12 +275,16 @@ procedure TAdventOfCodeDay4.BeforeSolve;
 begin
   inherited;
   FWareHouse := TAocStaticGrid<boolean>.Create(FInput, WareHouseTileToBool, nil);
+  FWareHouseFloor := TAocStaticGrid<integer>.Create(FWareHouse.MaxX, FWareHouse.MaxY, nil);
+  FPaperRolesToRemove := TQueue<TPosition>.Create;
 end;
 
 procedure TAdventOfCodeDay4.AfterSolve;
 begin
   inherited;
   FWareHouse.Free;
+  FWareHouseFloor.Free;
+  FPaperRolesToRemove.Free;
 end;
 
 function TAdventOfCodeDay4.WareHouseTileToBool(const aChar: Char): boolean;
@@ -287,59 +292,56 @@ begin
   Result := aChar = '@'
 end;
 
-function TAdventOfCodeDay4.IsPaperRoleAccasible(const aPosition: TPosition): boolean;
+function TAdventOfCodeDay4.SolveA: Variant;
 var
+  WareHouseTile: TPair<TPosition, boolean>;
   positionToCheck: TPosition;
   ContainsPaperRole, i: integer;
   IsPaperRole: boolean;
 begin
-  Result := False;
-
-  ContainsPaperRole := 0;
-  for i := 0 to 7 do
-  begin
-    positionToCheck := aPosition.Clone.ApplyDirections(DirectionsAround[i], 1);
-    if FWareHouse.TryGetValue(positionToCheck, IsPaperRole) and IsPaperRole  then
-      inc(ContainsPaperRole);
-    if ContainsPaperRole >= 4 then
-      Exit;
-  end;
-
-  Result := True;
-end;
-
-function TAdventOfCodeDay4.SolveA: Variant;
-var
-  WareHouseTile: TPair<TPosition, boolean>;
-begin
   Result := 0;
   for WareHouseTile in FWareHouse do
-    if WareHouseTile.Value and IsPaperRoleAccasible(WarehouseTile.Key) then
-      Inc(Result);
+    if WareHouseTile.Value then
+    begin
+      ContainsPaperRole := 0;
+      for i := 0 to 7 do
+      begin
+        positionToCheck := WareHouseTile.Key.Clone.ApplyDirections(DirectionsAround[i], 1);
+        if FWareHouse.TryGetValue(positionToCheck, IsPaperRole) and IsPaperRole then
+          inc(ContainsPaperRole);
+      end;
+
+      FWareHouseFloor.SetData(WareHouseTile.Key, ContainsPaperRole);
+      if ContainsPaperRole < 4 then
+        FPaperRolesToRemove.Enqueue(WareHouseTile.Key);
+    end;
+
+  Result := FPaperRolesToRemove.Count;
 end;
 
 function TAdventOfCodeDay4.SolveB: Variant;
 var
-  WareHouseTile: TPair<TPosition, boolean>;
-  positionToCheck: TPosition;
-  RemovedSomething: boolean;
+  CurrentPaperRolePosition, positionToCheck: TPosition;
+  i, CurrentNeighborCount: integer;
 begin
   Result := 0;
-  RemovedSomething := True;
 
-  while RemovedSomething do
+  while FPaperRolesToRemove.Count > 0 do
   begin
-    RemovedSomething := false;
+    inc(result);
+    CurrentPaperRolePosition := FPaperRolesToRemove.Dequeue;
 
-    for WareHouseTile in FWareHouse do
-    begin
-      if WareHouseTile.Value and IsPaperRoleAccasible(WareHouseTile.Key) then
+    for i := 0 to 7 do
       begin
-        RemovedSomething := True;
-        FWareHouse.SetData(WareHouseTile.Key, false);
-        inc(Result);
+        positionToCheck := CurrentPaperRolePosition.Clone.ApplyDirections(DirectionsAround[i], 1);
+        if FWareHouseFloor.TryGetValue(positionToCheck, CurrentNeighborCount) then
+        begin
+          if CurrentNeighborCount = 4 then
+            FPaperRolesToRemove.Enqueue(positionToCheck);
+          if CurrentNeighborCount >= 4 then
+            FWareHouseFloor.SetData(positionToCheck, CurrentNeighborCount-1);
+        end;
       end;
-    end;
   end;
 end;
 {$ENDREGION}
