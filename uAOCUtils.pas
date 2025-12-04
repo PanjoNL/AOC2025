@@ -11,6 +11,9 @@ type
   TAOCDirection = (North = 0, East, South, West, None);
   TAOCDirections = set of TAOCDirection;
 
+Const
+  DirectionsAround: array[0..7] of TAOCDirections = ([North],[East],[South],[West],[North,East],[North,West],[South,East],[South,West]);
+
 type AOCUtils = class
   public
     class function GetAdventOfCode: TList<TAdventOfCodeRef>;
@@ -37,6 +40,8 @@ type
     function Equals(Const Other: TPosition): Boolean; inline;
     function Clone: TPosition; inline;
     function ApplyDirection(Const aDirection: TAOCDirection; aDelta: Int64 = 1): TPosition; inline;
+    function ApplyDirections(Const aDirections: TAOCDirections; aDelta: Int64 = 1): TPosition; inline;
+
     function CacheKey: Int64; inline;
   private
     function SetIt(const aX, aY: int64): TPosition; inline;
@@ -276,6 +281,16 @@ begin
   end;
   Result := Self
 end;
+
+function TPosition.ApplyDirections(const aDirections: TAOCDirections; aDelta: Int64): TPosition;
+var
+  dir: TAocDirection;
+begin
+  Result := Self;
+  for dir in aDirections do
+    Result.ApplyDirection(dir, aDelta)
+end;
+
 
 class function TPosition3.Create(Const aX, aY, aZ: int64): TPosition3;
 begin

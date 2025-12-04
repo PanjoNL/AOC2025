@@ -44,6 +44,18 @@ type
     function SolveB: Variant; override;
   end;
 
+  TAdventOfCodeDay4 = class(TAdventOfCode)
+  private
+    FWareHouse: TAocGrid<boolean>;
+    function WareHouseTileToBool(const aChar: Char): boolean;
+    function IsPaperRoleAccasible(const aPosition: TPosition): boolean; inline;
+  protected
+    procedure BeforeSolve; override;
+    procedure AfterSolve; override;
+    function SolveA: Variant; override;
+    function SolveB: Variant; override;
+  end;
+
   TAdventOfCodeDay = class(TAdventOfCode)
   private
   protected
@@ -257,6 +269,80 @@ begin
   Result := FindBestBatteryConfiguration(12);
 end;
 {$ENDREGION}
+{$REGION 'TAdventOfCodeDay4'}
+procedure TAdventOfCodeDay4.BeforeSolve;
+begin
+  inherited;
+  FWareHouse := TAocStaticGrid<boolean>.Create(FInput, WareHouseTileToBool, nil);
+end;
+
+procedure TAdventOfCodeDay4.AfterSolve;
+begin
+  inherited;
+  FWareHouse.Free;
+end;
+
+function TAdventOfCodeDay4.WareHouseTileToBool(const aChar: Char): boolean;
+begin
+  Result := aChar = '@'
+end;
+
+function TAdventOfCodeDay4.IsPaperRoleAccasible(const aPosition: TPosition): boolean;
+var
+  positionToCheck: TPosition;
+  ContainsPaperRole, i: integer;
+  IsPaperRole: boolean;
+begin
+  Result := False;
+
+  ContainsPaperRole := 0;
+  for i := 0 to 7 do
+  begin
+    positionToCheck := aPosition.Clone.ApplyDirections(DirectionsAround[i], 1);
+    if FWareHouse.TryGetValue(positionToCheck, IsPaperRole) and IsPaperRole  then
+      inc(ContainsPaperRole);
+    if ContainsPaperRole >= 4 then
+      Exit;
+  end;
+
+  Result := True;
+end;
+
+function TAdventOfCodeDay4.SolveA: Variant;
+var
+  WareHouseTile: TPair<TPosition, boolean>;
+begin
+  Result := 0;
+  for WareHouseTile in FWareHouse do
+    if WareHouseTile.Value and IsPaperRoleAccasible(WarehouseTile.Key) then
+      Inc(Result);
+end;
+
+function TAdventOfCodeDay4.SolveB: Variant;
+var
+  WareHouseTile: TPair<TPosition, boolean>;
+  positionToCheck: TPosition;
+  RemovedSomething: boolean;
+begin
+  Result := 0;
+  RemovedSomething := True;
+
+  while RemovedSomething do
+  begin
+    RemovedSomething := false;
+
+    for WareHouseTile in FWareHouse do
+    begin
+      if WareHouseTile.Value and IsPaperRoleAccasible(WareHouseTile.Key) then
+      begin
+        RemovedSomething := True;
+        FWareHouse.SetData(WareHouseTile.Key, false);
+        inc(Result);
+      end;
+    end;
+  end;
+end;
+{$ENDREGION}
 
 {$REGION 'TAdventOfCodeDay'}
 procedure TAdventOfCodeDay.BeforeSolve;
@@ -289,6 +375,6 @@ end;
 initialization
 
 RegisterClasses([
-  TAdventOfCodeDay1,TAdventOfCodeDay2,TAdventOfCodeDay3]);
+  TAdventOfCodeDay1,TAdventOfCodeDay2,TAdventOfCodeDay3,TAdventOfCodeDay4]);
 
 end.
