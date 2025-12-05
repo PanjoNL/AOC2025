@@ -435,10 +435,16 @@ var
       end;
 
       if InRange(aNewRange.LowBound, OtherRange.LowBound, OtherRange.HighBound) then
-        aNewRange.LowBound := OtherRange.HighBound + 1;
+      begin
+        aNewRange.LowBound := OtherRange.LowBound;
+        normalisedRanges.Delete(OtherRangeIndex);
+      end;
 
       if InRange(aNewRange.HighBound, OtherRange.LowBound, OtherRange.HighBound) then
-        aNewRange.HighBound := OtherRange.LowBound - 1
+      begin
+        aNewRange.HighBound := OtherRange.HighBound;
+        normalisedRanges.Delete(OtherRangeIndex);
+      end;
     end;
 
     normalisedRanges.Add(aNewRange)
