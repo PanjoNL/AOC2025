@@ -57,6 +57,21 @@ type
     function SolveB: Variant; override;
   end;
 
+  type Range = record
+    LowBound,
+    HighBound: int64;
+  end;
+
+  TAdventOfCodeDay5 = class(TAdventOfCode)
+  private
+    FAllRanges: TList<Range>;
+  protected
+    procedure BeforeSolve; override;
+    procedure AfterSolve; override;
+    function SolveA: Variant; override;
+    function SolveB: Variant; override;
+  end;
+
   TAdventOfCodeDay = class(TAdventOfCode)
   private
   protected
@@ -345,6 +360,107 @@ begin
   end;
 end;
 {$ENDREGION}
+{$REGION 'TAdventOfCodeDay5'}
+procedure TAdventOfCodeDay5.BeforeSolve;
+begin
+  inherited;
+  FAllRanges := TList<Range>.Create;
+end;
+
+procedure TAdventOfCodeDay5.AfterSolve;
+begin
+  inherited;
+  FAllRanges.Free;
+end;
+
+function TAdventOfCodeDay5.SolveA: Variant;
+var
+  s: string;
+  ingredientId: int64;
+  FillingRanges: Boolean;
+  Split: TStringDynArray;
+  r: Range;
+begin
+  Result := 0;
+  FillingRanges := true;
+
+  for s in FInput do
+  begin
+    if s = '' then
+    begin
+      FillingRanges := False;
+      Continue
+    end;
+
+    if FillingRanges then
+    begin
+      Split := SplitString(s, '-');
+      r.LowBound := split[0].ToInt64;
+      r.HighBound := split[1].ToInt64;
+      FAllRanges.Add(r);
+      Continue;
+    end;
+
+    ingredientId := s.ToInt64;
+    for r in FAllRanges do
+      if InRange(ingredientId, r.LowBound, r.HighBound) then
+      begin
+        Inc(Result);
+        Break;
+      end;
+  end;
+end;
+
+function TAdventOfCodeDay5.SolveB: Variant;
+var
+  normalisedRanges: TList<Range>;
+
+  procedure AddToNormalisedRanges(aNewRange: Range);
+  var
+    OtherRangeIndex: integer;
+    OtherRange: Range;
+  begin
+    for OtherRangeIndex := normalisedRanges.Count-1 downTo 0 do
+    begin
+      OtherRange := normalisedRanges[OtherRangeIndex];
+      // Check if this range fits completely in the other range
+      if (aNewRange.LowBound >= OtherRange.LowBound) and (aNewRange.HighBound <= OtherRange.HighBound) then
+          Exit;
+
+      // Check if the other range fits completely in this range
+      if (aNewRange.LowBound < OtherRange.LowBound) and (aNewRange.HighBound > OtherRange.HighBound) then
+      begin
+        normalisedRanges.Delete(OtherRangeIndex);
+        continue;
+      end;
+
+      if InRange(aNewRange.LowBound, OtherRange.LowBound, OtherRange.HighBound) then
+        aNewRange.LowBound := OtherRange.HighBound + 1;
+
+      if InRange(aNewRange.HighBound, OtherRange.LowBound, OtherRange.HighBound) then
+        aNewRange.HighBound := OtherRange.LowBound - 1
+    end;
+
+    normalisedRanges.Add(aNewRange)
+  end;
+
+var
+  r: Range;
+begin
+  Result := 0;
+  normalisedRanges := TList<Range>.Create;
+  try
+    for r in FAllRanges do
+      AddToNormalisedRanges(r);
+
+    for r in normalisedRanges do
+      Inc(Result, r.HighBound - r.LowBound + 1);
+  finally
+    normalisedRanges.Free;
+  end;
+end;
+{$ENDREGION}
+
 
 {$REGION 'TAdventOfCodeDay'}
 procedure TAdventOfCodeDay.BeforeSolve;
@@ -359,14 +475,8 @@ begin
 end;
 
 function TAdventOfCodeDay.SolveA: Variant;
-//var
-//  s: string;
-//  split: TStringDynArray;
 begin
-//  for s in FInput do
-//  begin
-//    split := SplitString(s, ',');
-//  end;
+
 end;
 
 function TAdventOfCodeDay.SolveB: Variant;
@@ -377,6 +487,6 @@ end;
 initialization
 
 RegisterClasses([
-  TAdventOfCodeDay1,TAdventOfCodeDay2,TAdventOfCodeDay3,TAdventOfCodeDay4]);
+  TAdventOfCodeDay1,TAdventOfCodeDay2,TAdventOfCodeDay3,TAdventOfCodeDay4,TAdventOfCodeDay5]);
 
 end.
