@@ -47,7 +47,7 @@ type
   TAdventOfCodeDay4 = class(TAdventOfCode)
   private
     FWareHouse: TAocGrid<boolean>;
-    FWareHouseFloor: TAocGrid<integer>;
+    FWareHouseFloor: TAocGrid<byte>;
     FPaperRolesToRemove: TQueue<TPosition>;
     function WareHouseTileToBool(const aChar: Char): boolean;
   protected
@@ -68,6 +68,14 @@ type
   protected
     procedure BeforeSolve; override;
     procedure AfterSolve; override;
+    function SolveA: Variant; override;
+    function SolveB: Variant; override;
+  end;
+
+  TAdventOfCodeDay6 = class(TAdventOfCode)
+  private
+    function CalculateSum(Operation: char; Numbers: TList<int64>): int64; inline;
+  protected
     function SolveA: Variant; override;
     function SolveB: Variant; override;
   end;
@@ -290,7 +298,7 @@ procedure TAdventOfCodeDay4.BeforeSolve;
 begin
   inherited;
   FWareHouse := TAocStaticGrid<boolean>.Create(FInput, WareHouseTileToBool, nil);
-  FWareHouseFloor := TAocStaticGrid<integer>.Create(FWareHouse.MaxX, FWareHouse.MaxY, nil);
+  FWareHouseFloor := TAocStaticGrid<byte>.Create(FWareHouse.MaxX, FWareHouse.MaxY, nil);
   FPaperRolesToRemove := TQueue<TPosition>.Create;
 end;
 
@@ -337,7 +345,8 @@ end;
 function TAdventOfCodeDay4.SolveB: Variant;
 var
   CurrentPaperRolePosition, positionToCheck: TPosition;
-  i, CurrentNeighborCount: integer;
+  i: integer;
+  CurrentNeighborCount: byte;
 begin
   Result := 0;
 
@@ -348,7 +357,7 @@ begin
 
     for i := 0 to 7 do
       begin
-        positionToCheck := CurrentPaperRolePosition.Clone.ApplyDirections(DirectionsAround[i], 1);
+        positionToCheck := CurrentPaperRolePosition.ApplyDirections(DirectionsAround[i], 1);
         if FWareHouseFloor.TryGetValue(positionToCheck, CurrentNeighborCount) then
         begin
           if CurrentNeighborCount = 4 then
@@ -466,6 +475,101 @@ begin
   end;
 end;
 {$ENDREGION}
+{$REGION 'TAdventOfCodeDay6'}
+function TAdventOfCodeDay6.CalculateSum(Operation: char; Numbers: TList<int64>): int64;
+var
+  i: integer;
+begin
+  Result := Numbers[0];
+  Numbers[0] := 0;
+
+  for i := 1 to Numbers.Count-1 do
+  begin
+    case IndexText(Operation, ['+', '*']) of
+      0: inc(Result, Numbers[i]);
+      1: Result := Result * Numbers[i];
+    else
+      raise Exception.Create('Invalid operation');
+    end;
+    numbers[i] := 0;
+  end;
+end;
+
+function TAdventOfCodeDay6.SolveA: Variant;
+var
+  Nums: TList<int64>;
+  TotalNums, i, numIndex: integer;
+  Operation, c: char;
+begin
+  Result := 0;
+  TotalNums := FInput.Count -1;
+  Nums := TList<int64>.Create;
+  for numIndex := 0 to TotalNums-1 do
+    Nums.Add(0);
+
+  Operation := '?';
+  for i := 1 to Length(FInput[0]) do
+  begin
+    c := FInput[TotalNums][i];
+    if c <> ' ' then
+    begin
+      if Operation <> '?' then
+        inc(Result, CalculateSum(Operation, Nums));
+      Operation := c;
+    end;
+
+    for numIndex := 0 to TotalNums-1 do
+    begin
+      c := FInput[numIndex][i];
+      if c <> ' ' then
+        nums[numIndex] := 10 * nums[numIndex] + StrToInt(c)
+    end;
+  end;
+
+  inc(Result, CalculateSum(Operation, nums));
+  nums.Free;
+end;
+
+function TAdventOfCodeDay6.SolveB: Variant;
+var
+  temp: int64;
+  Nums: TList<int64>;
+  TotalNums, i, numIndex: integer;
+  Operation, c: char;
+begin
+  Result := 0;
+  TotalNums := FInput.Count -1;
+  Nums := TList<int64>.Create;
+  Operation := '?';
+
+  for i := 1 to Length(FInput[0]) do
+  begin
+    c := FInput[TotalNums][i];
+    if c <> ' ' then
+    begin
+      if Operation <> '?' then
+        inc(Result, CalculateSum(Operation, Nums));
+      nums.Clear;
+      Operation := c;
+    end;
+
+    temp := 0;
+    for numIndex := 0 to TotalNums-1 do
+    begin
+      c := FInput[numIndex][i];
+      if c <> ' ' then
+        temp := 10 * temp + StrToInt(c)
+    end;
+    if temp > 0 then
+      nums.Add(temp);
+  end;
+
+  inc(Result, CalculateSum(Operation, nums));
+  nums.Free;
+end;
+{$ENDREGION}
+
+
 
 
 {$REGION 'TAdventOfCodeDay'}
@@ -493,6 +597,7 @@ end;
 initialization
 
 RegisterClasses([
-  TAdventOfCodeDay1,TAdventOfCodeDay2,TAdventOfCodeDay3,TAdventOfCodeDay4,TAdventOfCodeDay5]);
+  TAdventOfCodeDay1,TAdventOfCodeDay2,TAdventOfCodeDay3,TAdventOfCodeDay4,TAdventOfCodeDay5,
+  TAdventOfCodeDay6]);
 
 end.
