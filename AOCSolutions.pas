@@ -80,6 +80,15 @@ type
     function SolveB: Variant; override;
   end;
 
+  TAdventOfCodeDay7 = class(TAdventOfCode)
+  private
+    ResultA, ResultB: int64;
+  protected
+    procedure BeforeSolve; override;
+    function SolveA: Variant; override;
+    function SolveB: Variant; override;
+  end;
+
   TAdventOfCodeDay = class(TAdventOfCode)
   private
   protected
@@ -568,7 +577,60 @@ begin
   nums.Free;
 end;
 {$ENDREGION}
+{$REGION 'TAdventOfCodeDay7'}
+procedure TAdventOfCodeDay7.BeforeSolve;
+var
+  Grid: TAocGrid<char>;
+  Cache: TDictionary<int64, int64>;
 
+  function WalkGrid(aCurrentPos: TPosition): int64;
+  var
+   c: char;
+  begin
+    aCurrentPos.AddDelta(0, 1);
+
+    if not Grid.TryGetValue(aCurrentPos, c) then
+      exit(1);
+
+    if c = '.' then
+      exit(WalkGrid(aCurrentPos));
+
+    if Cache.TryGetValue(aCurrentPos.CacheKey, Result) then
+      Exit;
+
+    Result := WalkGrid(aCurrentPos.Clone.AddDelta(-1, 0)) + WalkGrid(aCurrentPos.Clone.AddDelta(1, 0));
+    Cache.Add(aCurrentPos.CacheKey, Result);
+  end;
+
+var
+  GridPosition: TPair<TPosition, char>;
+begin
+  Grid := TAocGridHelper.CreateCharGrid(FInput, False);
+  Cache := TDictionary<int64, int64>.Create;
+  ResultB := 0;
+
+  for GridPosition in Grid do
+    if GridPosition.Value = 'S' then
+    begin
+      ResultB := WalkGrid(GridPosition.Key);
+      Break;
+    end;
+
+  ResultA := Cache.Count;
+  Grid.Free;
+  Cache.Free;
+end;
+
+function TAdventOfCodeDay7.SolveA: Variant;
+begin
+  Result := ResultA;
+end;
+
+function TAdventOfCodeDay7.SolveB: Variant;
+begin
+  Result := ResultB;
+end;
+{$ENDREGION}
 
 
 
@@ -598,6 +660,6 @@ initialization
 
 RegisterClasses([
   TAdventOfCodeDay1,TAdventOfCodeDay2,TAdventOfCodeDay3,TAdventOfCodeDay4,TAdventOfCodeDay5,
-  TAdventOfCodeDay6]);
+  TAdventOfCodeDay6,TAdventOfCodeDay7]);
 
 end.
