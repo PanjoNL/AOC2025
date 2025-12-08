@@ -51,7 +51,7 @@ type
     x, y, z: int64;
     class function Create(Const aX, aY, aZ: int64): TPosition3; static;
     class operator Add(a, b: TPosition3): TPosition3;
-    class operator Subtract(a, b: TPosition3): TPosition3;
+    class operator Subtract(a, b: TPosition3): TPosition3; inline;
     class operator GreaterThan(a, b: TPosition3): Boolean;
     class operator LessThan(a, b: TPosition3): Boolean;
 

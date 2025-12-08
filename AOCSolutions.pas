@@ -89,6 +89,17 @@ type
     function SolveB: Variant; override;
   end;
 
+  TAdventOfCodeDay8 = class(TAdventOfCode)
+  private
+    ResultA, ResultB: int64;
+  protected
+    procedure BeforeSolve; override;
+    procedure AfterSolve; override;
+    function SolveA: Variant; override;
+    function SolveB: Variant; override;
+  end;
+
+
   TAdventOfCodeDay = class(TAdventOfCode)
   private
   protected
@@ -631,7 +642,180 @@ begin
   Result := ResultB;
 end;
 {$ENDREGION}
+{$REGION 'TAdventOfCodeDay8'}
 
+type TLight = class
+  Position: TPosition; 
+  GroupIndex: integer;
+end;
+
+Type TLampPair = record
+  Pos1, Pos2: TPosition3;
+  Distance: int64;
+
+end;
+
+type LampSorter = class (TInterfacedObject, IComparer<TLampPair>)
+
+  function Compare(const Left, Right: TLampPair): Integer;
+
+End;
+type LampSorter2 = class (TInterfacedObject, IComparer<TLampPair>)
+
+  function Compare(const Left, Right: TLampPair): Integer;
+
+End;
+
+procedure TAdventOfCodeDay8.BeforeSolve;
+var
+  Lights, Blaat: TList<TLight>;
+  CurrentLight, OtherLight: TLight;
+  ConnectedLights: TDictionary<integer, TList<TLight>>;
+  
+  GroupList, Lamps: TList<TPosition3>;
+  LampPairs2: PriorityQueue<TLampPair>;
+  LampDistance, pos: TPosition3;
+  s: string;
+  split: TStringDynArray;
+  i,x,y: integer;
+  LampPair, LampPair2: TLampPair;
+  Groups: TDictionary<integer, TList<TPosition3>>;
+  GroupId1, GroupId2, BestCount: int64;
+  LookupCount: integer;
+
+
+  function FindGroupId(aPos: TPosition3): integer;
+  var
+    kvp: TPair<Integer, TList<TPosition3>>;
+  begin
+    inc(LookupCount);
+
+    Result := -1;
+    for kvp in groups do
+      if kvp.Value.Contains(aPos) then
+        Exit(kvp.Key);
+    assert(false);
+  end;
+
+var
+  kvp: TPair<Integer, TList<TPosition3>>;
+
+  function CalculateResultA(): int64;
+  var
+    Totals: TList<int64>;
+    Group: TList<TPosition3>;
+  begin
+    Totals := TList<int64>.Create;
+    for Group in Groups.Values do
+      Totals.Add(Group.Count);
+    Totals.Sort;
+    Result := Totals[Totals.Count-1] * Totals[Totals.Count-2] * Totals[Totals.Count-3];
+    Totals.Free;
+  end;
+
+var
+  Timer, Timer2: AOCTimer;
+  OtherLamp: TPosition3;
+begin
+  LookupCount := 0;
+
+  Lamps := TList<TPosition3>.Create;
+
+  LampPairs2 := PriorityQueue<TLampPair>.Create(LampSorter2.Create, LampSorter2.Create);
+  Groups := TDictionary<integer, TList<TPosition3>>.Create;
+
+  timer := AOCTimer.Start;
+
+  for s in FInput do
+  begin
+    Split := SplitString(s, ',');
+    pos := TPosition3.Create(Split[0].ToInt64,Split[1].ToInt64,Split[2].ToInt64);
+
+    GroupList := TList<TPosition3>.Create;
+    GroupList.Add(pos);
+    Groups.AddOrSetValue(Groups.Count, GroupList);
+
+    for OtherLamp in Lamps do
+    begin
+      LampPair.Pos1 := Pos;
+      LampPair.Pos2 := OtherLamp;
+
+      LampDistance := LampPair.Pos1 - LampPair.Pos2;
+      LampPair.Distance :=
+        LampDistance.x * LampDistance.x +
+        LampDistance.y * LampDistance.y +
+        LampDistance.z * LampDistance.z;
+
+//        LampPairs.Add(LampPair);
+      LampPairs2.Enqueue(LampPair);
+    end;
+
+    Lamps.Add(pos);
+
+  end;
+
+  Writeln('Total pair ', LampPairs2.Count);
+
+  WriteLn('Input 1 ', Timer.ElapsedTime);
+  timer := AOCTimer.Start;
+
+    for i := 0 to 100000000-1 do
+    begin
+      
+
+      if i = 1000 then
+      begin
+        Timer2 := AOCTimer.Start;
+        ResultA := CalculateResultA;
+        Writeln('Calca ', Timer2.ElapsedTime);
+      end;
+
+      LampPair2 := LampPairs2.Dequeue;
+      LampPair := LampPair2;
+
+  
+
+      GroupId1 := FindGroupId(LampPair.Pos1);
+      GroupId2 := FindGroupId(LampPair.Pos2);
+
+      if GroupId1 = GroupId2 then
+        Continue;
+
+      if Groups.Count = 2 then
+      begin
+        Writeln(LookupCount);
+        ResultB := LampPair.Pos1.x * LampPair.Pos2.x;
+        WriteLn('Itterate ', Timer.ElapsedTime);
+        timer := AOCTimer.Start;
+
+
+        Exit;
+
+      end;
+      Groups[GroupId1].AddRange(Groups[GroupId2]);
+      Groups.Remove(GroupId2);
+    end;
+
+
+
+end;
+
+procedure TAdventOfCodeDay8.AfterSolve;
+begin
+  inherited;
+
+end;
+
+function TAdventOfCodeDay8.SolveA: Variant;
+begin
+  Result := ResultA;
+end;
+
+function TAdventOfCodeDay8.SolveB: Variant;
+begin
+  Result := ResultB;
+end;
+{$ENDREGION}
 
 
 {$REGION 'TAdventOfCodeDay'}
@@ -656,10 +840,25 @@ begin
 end;
 {$ENDREGION}
 
+{ LampSorter }
+
+function LampSorter.Compare(const Left, Right: TLampPair): Integer;
+begin
+  Result := Sign(Left.Distance - right.Distance);
+
+end;
+
+{ LampSorter2 }
+
+function LampSorter2.Compare(const Left, Right: TLampPair): Integer;
+begin
+    Result := Sign(Left.Distance - right.Distance);
+end;
+
 initialization
 
 RegisterClasses([
   TAdventOfCodeDay1,TAdventOfCodeDay2,TAdventOfCodeDay3,TAdventOfCodeDay4,TAdventOfCodeDay5,
-  TAdventOfCodeDay6,TAdventOfCodeDay7]);
+  TAdventOfCodeDay6,TAdventOfCodeDay7,TAdventOfCodeDay8]);
 
 end.
