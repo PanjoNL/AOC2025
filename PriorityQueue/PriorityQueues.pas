@@ -28,6 +28,7 @@ type
     procedure Enqueue(const Element: E);
 
     function Dequeue(): E;
+    function Peek: E;
 
     procedure Clear();
 
@@ -204,6 +205,11 @@ class operator PriorityQueue<E>.In(const Element: E;
   const PriQueue: PriorityQueue<E>): boolean;
 begin
   result := PriQueue.Contains(Element);
+end;
+
+function PriorityQueue<E>.Peek: E;
+begin
+  Result := Impl.Peek;
 end;
 
 procedure PriorityQueue<E>.Remove(const Element: E);

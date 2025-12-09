@@ -59,6 +59,7 @@ type
     procedure Enqueue(const Element: E);
 
     function Dequeue(): E;
+    function Peek: E;
 
     procedure Clear();
 
@@ -120,6 +121,8 @@ type
     procedure Enqueue(const Element: E);
 
     function Dequeue(): E;
+
+    function  Peek(): E;
 
     procedure Clear();
 
@@ -456,6 +459,11 @@ function PriorityQueueImpl<E>.Dequeue: E;
 begin
   result := Heap[1].Element;
   RemoveNode(1);
+end;
+
+function PriorityQueueImpl<E>.Peek: E;
+begin
+  Result := Heap[1].Element;
 end;
 
 function PriorityQueueImpl<E>.ElementIndex(const Element: E): NativeInt;

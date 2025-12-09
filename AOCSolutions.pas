@@ -10,7 +10,8 @@ uses
   System.StrUtils,
   System.Math, uAOCUtils, System.Types, PriorityQueues, System.Json,
   AocLetterReader, uAOCTimer, uAocGrid,
-  System.Threading, System.SyncObjs, system.Hash;
+  System.Threading, System.SyncObjs, system.Hash,
+  Vcl.Imaging.pngimage, Vcl.Graphics;
 
 type
   IntegerArray = Array Of Integer;
@@ -94,10 +95,19 @@ type
     ResultA, ResultB: int64;
   protected
     procedure BeforeSolve; override;
-    procedure AfterSolve; override;
     function SolveA: Variant; override;
     function SolveB: Variant; override;
   end;
+
+  TAdventOfCodeDay9 = class(TAdventOfCode)
+  private
+    ResultA, ResultB: int64;
+  protected
+    procedure BeforeSolve; override;
+    function SolveA: Variant; override;
+    function SolveB: Variant; override;
+  end;
+
 
 
   TAdventOfCodeDay = class(TAdventOfCode)
@@ -643,167 +653,135 @@ begin
 end;
 {$ENDREGION}
 {$REGION 'TAdventOfCodeDay8'}
+type
+  TLight = class
+    x,y,z: int64;
+    Key: integer;
+    ClosestLight: PriorityQueue<TPair<int64, TLight>>;
 
-type TLight = class
-  Position: TPosition; 
-  GroupIndex: integer;
+    constructor Create(aX, aY, aZ: int64; aKey: integer);
+    procedure CalculateDistanceToOtherLights(aOtherLights: TList<TLight>);
+  end;
+
+  TDistanceComparer = class (TInterfacedObject, IComparer<TPair<int64, TLight>>)
+    function Compare(const Left, Right: TPair<int64, TLight>): Integer;
+  end;
+
+constructor TLight.Create(aX, aY, aZ: int64; aKey: integer);
+begin
+  self.x := aX;
+  self.y := aY;
+  self.z := aZ;
+  self.Key := aKey;
+
+  self.ClosestLight := PriorityQueue<TPair<int64, TLight>>.Create(TDistanceComparer.Create, TDistanceComparer.Create);
 end;
 
-Type TLampPair = record
-  Pos1, Pos2: TPosition3;
-  Distance: int64;
+procedure TLight.CalculateDistanceToOtherLights(aOtherLights: TList<TLight>);
+var
+  i: Integer;
+  OtherLight: TLight;
+  distance: int64;
+begin
+  for i := 0 to self.Key -1 do
+  begin
+    OtherLight := aOtherLights[i];
 
+    distance :=
+      (Self.x - OtherLight.x) * (Self.x - OtherLight.x) +
+      (Self.y - OtherLight.y) * (Self.y - OtherLight.y) +
+      (Self.z - OtherLight.z) * (Self.z - OtherLight.z);
+
+    ClosestLight.Enqueue(TPair<int64, TLight>.Create(Distance, OtherLight));
+  end
 end;
 
-type LampSorter = class (TInterfacedObject, IComparer<TLampPair>)
+{ TDistanceComparer }
 
-  function Compare(const Left, Right: TLampPair): Integer;
-
-End;
-type LampSorter2 = class (TInterfacedObject, IComparer<TLampPair>)
-
-  function Compare(const Left, Right: TLampPair): Integer;
-
-End;
+function TDistanceComparer.Compare(const Left, Right: TPair<int64, TLight>): Integer;
+begin
+  Result := Sign(Left.Key - Right.Key);
+end;
 
 procedure TAdventOfCodeDay8.BeforeSolve;
 var
-  Lights, Blaat: TList<TLight>;
-  CurrentLight, OtherLight: TLight;
   ConnectedLights: TDictionary<integer, TList<TLight>>;
-  
-  GroupList, Lamps: TList<TPosition3>;
-  LampPairs2: PriorityQueue<TLampPair>;
-  LampDistance, pos: TPosition3;
-  s: string;
-  split: TStringDynArray;
-  i,x,y: integer;
-  LampPair, LampPair2: TLampPair;
-  Groups: TDictionary<integer, TList<TPosition3>>;
-  GroupId1, GroupId2, BestCount: int64;
-  LookupCount: integer;
-
-
-  function FindGroupId(aPos: TPosition3): integer;
-  var
-    kvp: TPair<Integer, TList<TPosition3>>;
-  begin
-    inc(LookupCount);
-
-    Result := -1;
-    for kvp in groups do
-      if kvp.Value.Contains(aPos) then
-        Exit(kvp.Key);
-    assert(false);
-  end;
-
-var
-  kvp: TPair<Integer, TList<TPosition3>>;
 
   function CalculateResultA(): int64;
   var
     Totals: TList<int64>;
-    Group: TList<TPosition3>;
+    LightGroup: TList<TLight>;
   begin
     Totals := TList<int64>.Create;
-    for Group in Groups.Values do
-      Totals.Add(Group.Count);
+    for LightGroup in ConnectedLights.Values do
+      Totals.Add(LightGroup.Count);
     Totals.Sort;
     Result := Totals[Totals.Count-1] * Totals[Totals.Count-2] * Totals[Totals.Count-3];
     Totals.Free;
   end;
 
 var
-  Timer, Timer2: AOCTimer;
-  OtherLamp: TPosition3;
+  s: string;
+  split: TStringDynArray;
+  AllLights, ConnectedLightList: TList<TLight>;
+  LightQueue: PriorityQueue<TPair<int64, TLight>>;
+  CurrentLight, Light1, Light2: TLight;
+  i: integer;
 begin
-  LookupCount := 0;
+  AllLights := TObjectList<TLight>.Create(True);
+  ConnectedLights := TObjectDictionary<integer, TList<TLight>>.Create([doOwnsValues]);
+  LightQueue := PriorityQueue<TPair<int64, TLight>>.Create(TDistanceComparer.Create, TDistanceComparer.Create);
 
-  Lamps := TList<TPosition3>.Create;
-
-  LampPairs2 := PriorityQueue<TLampPair>.Create(LampSorter2.Create, LampSorter2.Create);
-  Groups := TDictionary<integer, TList<TPosition3>>.Create;
-
-  timer := AOCTimer.Start;
-
-  for s in FInput do
-  begin
-    Split := SplitString(s, ',');
-    pos := TPosition3.Create(Split[0].ToInt64,Split[1].ToInt64,Split[2].ToInt64);
-
-    GroupList := TList<TPosition3>.Create;
-    GroupList.Add(pos);
-    Groups.AddOrSetValue(Groups.Count, GroupList);
-
-    for OtherLamp in Lamps do
+  try
+    for s in FInput do
     begin
-      LampPair.Pos1 := Pos;
-      LampPair.Pos2 := OtherLamp;
+      Split := SplitString(s, ',');
+      CurrentLight := TLight.Create(Split[0].ToInteger, Split[1].ToInteger, Split[2].ToInteger, ConnectedLights.Count);
 
-      LampDistance := LampPair.Pos1 - LampPair.Pos2;
-      LampPair.Distance :=
-        LampDistance.x * LampDistance.x +
-        LampDistance.y * LampDistance.y +
-        LampDistance.z * LampDistance.z;
+      ConnectedLightList := TList<TLight>.Create;
+      ConnectedLightList.Add(CurrentLight);
+      ConnectedLights.Add(CurrentLight.Key, ConnectedLightList);
 
-//        LampPairs.Add(LampPair);
-      LampPairs2.Enqueue(LampPair);
+      AllLights.Add(CurrentLight);
+
+      CurrentLight.CalculateDistanceToOtherLights(AllLights);
+      if CurrentLight.ClosestLight.Count > 0 then
+        LightQueue.Enqueue(TPair<int64, TLight>.Create(CurrentLight.ClosestLight.Peek.Key, CurrentLight));
     end;
 
-    Lamps.Add(pos);
-
-  end;
-
-  Writeln('Total pair ', LampPairs2.Count);
-
-  WriteLn('Input 1 ', Timer.ElapsedTime);
-  timer := AOCTimer.Start;
-
-    for i := 0 to 100000000-1 do
+    i := 0;
+    while True do
     begin
-      
+      inc(i);
 
       if i = 1000 then
-      begin
-        Timer2 := AOCTimer.Start;
         ResultA := CalculateResultA;
-        Writeln('Calca ', Timer2.ElapsedTime);
-      end;
 
-      LampPair2 := LampPairs2.Dequeue;
-      LampPair := LampPair2;
+      Light1 := LightQueue.Dequeue.Value;
+      Light2 := Light1.ClosestLight.Dequeue.Value;
 
-  
+      if Light1.ClosestLight.Count > 0  then
+        LightQueue.Enqueue(TPair<int64, TLight>.Create(Light1.ClosestLight.Peek.Key, Light1));
 
-      GroupId1 := FindGroupId(LampPair.Pos1);
-      GroupId2 := FindGroupId(LampPair.Pos2);
-
-      if GroupId1 = GroupId2 then
+      if Light1.Key = Light2.Key then
         Continue;
 
-      if Groups.Count = 2 then
+      if ConnectedLights.Count = 2 then
       begin
-        Writeln(LookupCount);
-        ResultB := LampPair.Pos1.x * LampPair.Pos2.x;
-        WriteLn('Itterate ', Timer.ElapsedTime);
-        timer := AOCTimer.Start;
-
-
+        ResultB := Light1.x * Light2.x;
         Exit;
-
       end;
-      Groups[GroupId1].AddRange(Groups[GroupId2]);
-      Groups.Remove(GroupId2);
+
+      ConnectedLightList := ConnectedLights.ExtractPair(Light1.Key).Value;
+      for CurrentLight in ConnectedLightList do
+        CurrentLight.Key := Light2.Key;
+      ConnectedLights[Light2.Key].AddRange(ConnectedLightList);
+      ConnectedLightList.Free;
     end;
-
-
-
-end;
-
-procedure TAdventOfCodeDay8.AfterSolve;
-begin
-  inherited;
-
+  finally
+    AllLights.Free;
+    ConnectedLights.Free;
+  end;
 end;
 
 function TAdventOfCodeDay8.SolveA: Variant;
@@ -816,7 +794,84 @@ begin
   Result := ResultB;
 end;
 {$ENDREGION}
+{$REGION 'TAdventOfCodeDay9'}
+procedure TAdventOfCodeDay9.BeforeSolve;
+var
+  s: string;
+  split: TStringDynArray;
+  r, i, j, minX, maxX, minY, MaxY, p3minX, p3maxX, p3minY, p3MaxY: integer;
+  Points: TList<TPoint>;
+  p1, p2, p3, p3Prev: TPoint;
+  x, y, Area: int64;
+  IsValid: Boolean;
+begin
+  ResultA := 0;
+  ResultB := 0;
 
+  Points := TList<TPoint>.Create;
+  for s in FInput do
+  begin
+    split := SplitString(s, ',');
+    Points.Add(TPoint.Create(Split[0].ToInteger, Split[1].ToInteger));
+  end;
+  Points.Add(Points.First);
+
+  for i := 0 to Points.Count-3 do
+    for j := i+1 to Points.Count-2 do
+    begin
+      p1 := Points[i];
+      p2 := Points[j];
+
+      minX := Min(p1.X, p2.x);
+      maxX := Max(p1.X, p2.x);
+      minY := Min(p1.y, p2.y);
+      MaxY := Max(p1.y, p2.y);
+
+      x := 1 + MaxX - MinX;
+      y := 1 + MaxY - MinY ;
+
+      Area :=  x * y;
+
+      ResultA := Max(ResultA, Area);
+      if Area < ResultB then
+        Continue;
+
+      IsValid := True;
+      for r := 1 to points.Count-1 do
+      begin
+        p3Prev := Points[r-1];
+        p3 := Points[r];
+
+        p3minX := Min(p3Prev.X, p3.x);
+        p3maxX := Max(p3Prev.X, p3.x);
+        p3minY := Min(p3Prev.y, p3.y);
+        p3MaxY := Max(p3Prev.y, p3.y);
+
+        if (p3Prev.X = p3.x) and InRange(p3.x, MinX+1, MaxX-1)  then
+          IsValid := (P3MaxY <= MinY) or (P3MinY >= MaxY)
+        else if (p3Prev.y = p3.y) and InRange(p3.y, minY+1, MaxY-1) then
+          IsValid := (P3MaxX <= MinX) or (P3MinX >= MaxX);
+
+        if not IsValid then
+          Break;
+      end;
+
+      if IsValid then
+        ResultB := Area;
+    end;
+  Points.Free;
+end;
+
+function TAdventOfCodeDay9.SolveA: Variant;
+begin
+  Result := ResultA;
+end;
+
+function TAdventOfCodeDay9.SolveB: Variant;
+begin
+  Result := ResultB;
+end;
+{$ENDREGION}
 
 {$REGION 'TAdventOfCodeDay'}
 procedure TAdventOfCodeDay.BeforeSolve;
@@ -840,25 +895,10 @@ begin
 end;
 {$ENDREGION}
 
-{ LampSorter }
-
-function LampSorter.Compare(const Left, Right: TLampPair): Integer;
-begin
-  Result := Sign(Left.Distance - right.Distance);
-
-end;
-
-{ LampSorter2 }
-
-function LampSorter2.Compare(const Left, Right: TLampPair): Integer;
-begin
-    Result := Sign(Left.Distance - right.Distance);
-end;
-
 initialization
 
 RegisterClasses([
   TAdventOfCodeDay1,TAdventOfCodeDay2,TAdventOfCodeDay3,TAdventOfCodeDay4,TAdventOfCodeDay5,
-  TAdventOfCodeDay6,TAdventOfCodeDay7,TAdventOfCodeDay8]);
+  TAdventOfCodeDay6,TAdventOfCodeDay7,TAdventOfCodeDay8,TAdventOfCodeDay9]);
 
 end.
