@@ -109,15 +109,16 @@ type
   end;
 
   TMachine = class
-//    ButtonList: TList<TList<integer>>;
-    Buttons{, DesiredJolts}: TList<integer>;
+    ButtonList: TList<TList<integer>>;
+    Buttons, DesiredJolts: TList<integer>;
     DesiredLights: integer;
 
   public
     constructor Create(s: string);
     destructor Destroy; override;
 
-    function  CalcButtonPresses: integer;
+    function ConfigureIndicatorLights: integer;
+    function ConfigureJoltageIndicators: integer;
   end;
 
   TAdventOfCodeDay10 = class(TAdventOfCode)
@@ -129,7 +130,6 @@ type
     function SolveA: Variant; override;
     function SolveB: Variant; override;
   end;
-
 
   TAdventOfCodeDay = class(TAdventOfCode)
   private
@@ -894,19 +894,443 @@ begin
 end;
 {$ENDREGION}
 {$REGION 'TAdventOfCodeDay10'}
-{ TMachine }
+type
+  TButtonSorter = class (TInterfacedObject, IComparer<TList<integer>>)
+    ButtonCounts: TDictionary<integer, integer>;
+    function Compare(const Left, Right: TList<integer>): Integer;
+    function DetermineRarestButtonCount(aButtonList: TList<integer>): integer;
+  end;
+
+{
+LoadInput -> Time: 252 탎
+BeforeSolve -> Time: 1183 탎
+SolveA -> Time: 939 탎
+Calculating machine 1 of 197
+res 105
+Calculating machine 2 of 197
+res 273
+Calculating machine 3 of 197
+res 227
+Calculating machine 4 of 197
+res 63
+Calculating machine 5 of 197
+res 150
+Calculating machine 6 of 197
+res 60
+Calculating machine 7 of 197
+res 74
+Calculating machine 8 of 197
+res 93
+Calculating machine 9 of 197
+res 63
+Calculating machine 10 of 197
+res 194
+Calculating machine 11 of 197
+res 164
+Calculating machine 12 of 197
+res 30
+Calculating machine 13 of 197
+res 198
+Calculating machine 14 of 197
+res 36
+Calculating machine 15 of 197
+res 154
+Calculating machine 16 of 197
+res 195
+Calculating machine 17 of 197
+res 57
+Calculating machine 18 of 197
+res 253
+Calculating machine 19 of 197
+res 48
+Calculating machine 20 of 197
+res 76
+Calculating machine 21 of 197
+res 98
+Calculating machine 22 of 197
+res 279
+Calculating machine 23 of 197
+res 109
+Calculating machine 24 of 197
+res 26
+Calculating machine 25 of 197
+res 39
+Calculating machine 26 of 197
+res 226
+Calculating machine 27 of 197
+res 27
+Calculating machine 28 of 197
+res 113
+Calculating machine 29 of 197
+res 88
+Calculating machine 30 of 197
+res 72
+Calculating machine 31 of 197
+res 138
+Calculating machine 32 of 197
+res 79
+Calculating machine 33 of 197
+res 59
+Calculating machine 34 of 197
+res 95
+Calculating machine 35 of 197
+res 87
+Calculating machine 36 of 197
+res 82
+Calculating machine 37 of 197
+res 213
+Calculating machine 38 of 197
+res 47
+Calculating machine 39 of 197
+res 243
+Calculating machine 40 of 197
+res 176
+Calculating machine 41 of 197
+res 59
+Calculating machine 42 of 197
+res 75
+Calculating machine 43 of 197
+res 217
+Calculating machine 44 of 197
+res 69
+Calculating machine 45 of 197
+res 103
+Calculating machine 46 of 197
+res 63
+Calculating machine 47 of 197
+res 177
+Calculating machine 48 of 197
+res 138
+Calculating machine 49 of 197
+res 110
+Calculating machine 50 of 197
+res 51
+Calculating machine 51 of 197
+res 49
+Calculating machine 52 of 197
+res 94
+Calculating machine 53 of 197
+res 91
+Calculating machine 54 of 197
+res 132
+Calculating machine 55 of 197
+res 79
+Calculating machine 56 of 197
+res 48
+Calculating machine 57 of 197
+res 21
+Calculating machine 58 of 197
+res 153
+Calculating machine 59 of 197
+res 88
+Calculating machine 60 of 197
+res 18
+Calculating machine 61 of 197
+res 58
+Calculating machine 62 of 197
+res 63
+Calculating machine 63 of 197
+res 49
+Calculating machine 64 of 197
+res 31
+Calculating machine 65 of 197
+res 250
+Calculating machine 66 of 197
+res 145
+Calculating machine 67 of 197
+res 120
+Calculating machine 68 of 197
+res 86
+Calculating machine 69 of 197
+res 56
+Calculating machine 70 of 197
+res 205
+Calculating machine 71 of 197
+res 106
+Calculating machine 72 of 197
+res 168
+Calculating machine 73 of 197
+res 117
+Calculating machine 74 of 197
+res 70
+Calculating machine 75 of 197
+res 65
+Calculating machine 76 of 197
+res 70
+Calculating machine 77 of 197
+res 257
+Calculating machine 78 of 197
+res 124
+Calculating machine 79 of 197
+res 91
+Calculating machine 80 of 197
+res 23
+Calculating machine 81 of 197
+res 28
+Calculating machine 82 of 197
+res 31
+Calculating machine 83 of 197
+res 108
+Calculating machine 84 of 197
+res 75
+Calculating machine 85 of 197
+res 84
+Calculating machine 86 of 197
+res 33
+Calculating machine 87 of 197
+res 69
+Calculating machine 88 of 197
+res 154
+Calculating machine 89 of 197
+res 55
+Calculating machine 90 of 197
+res 77
+Calculating machine 91 of 197
+res 217
+Calculating machine 92 of 197
+res 30
+Calculating machine 93 of 197
+res 198
+Calculating machine 94 of 197
+res 25
+Calculating machine 95 of 197
+res 29
+Calculating machine 96 of 197
+res 48
+Calculating machine 97 of 197
+res 139
+Calculating machine 98 of 197
+res 84
+Calculating machine 99 of 197
+res 82
+Calculating machine 100 of 197
+res 125
+Calculating machine 101 of 197
+res 48
+Calculating machine 102 of 197
+res 138
+Calculating machine 103 of 197
+res 235
+Calculating machine 104 of 197
+res 47
+Calculating machine 105 of 197
+res 45
+Calculating machine 106 of 197
+res 47
+Calculating machine 107 of 197
+res 209
+Calculating machine 108 of 197
+res 163
+Calculating machine 109 of 197
+res 86
+Calculating machine 110 of 197
+res 18
+Calculating machine 111 of 197
+res 85
+Calculating machine 112 of 197
+res 248
+Calculating machine 113 of 197
+res 305
+Calculating machine 114 of 197
+res 106
+Calculating machine 115 of 197
+res 213
+Calculating machine 116 of 197
+res 56
+Calculating machine 117 of 197
+res 241
+Calculating machine 118 of 197
+res 85
+Calculating machine 119 of 197
+res 187
+Calculating machine 120 of 197
+res 195
+Calculating machine 121 of 197
+res 103
+Calculating machine 122 of 197
+res 42
+Calculating machine 123 of 197
+res 111
+Calculating machine 124 of 197
+res 181
+Calculating machine 125 of 197
+res 19
+Calculating machine 126 of 197
+res 47
+Calculating machine 127 of 197
+res 227
+Calculating machine 128 of 197
+res 49
+Calculating machine 129 of 197
+res 48
+Calculating machine 130 of 197
+res 49
+Calculating machine 131 of 197
+res 100
+Calculating machine 132 of 197
+res 68
+Calculating machine 133 of 197
+res 16
+Calculating machine 134 of 197
+res 189
+Calculating machine 135 of 197
+res 78
+Calculating machine 136 of 197
+res 42
+Calculating machine 137 of 197
+res 88
+Calculating machine 138 of 197
+res 225
+Calculating machine 139 of 197
+res 53
+Calculating machine 140 of 197
+res 31
+Calculating machine 141 of 197
+res 80
+Calculating machine 142 of 197
+res 46
+Calculating machine 143 of 197
+res 254
+Calculating machine 144 of 197
+res 209
+Calculating machine 145 of 197
+res 106
+Calculating machine 146 of 197
+res 209
+Calculating machine 147 of 197
+res 113
+Calculating machine 148 of 197
+res 251
+Calculating machine 149 of 197
+res 69
+Calculating machine 150 of 197
+res 131
+Calculating machine 151 of 197
+res 37
+Calculating machine 152 of 197
+res 74
+Calculating machine 153 of 197
+res 117
+Calculating machine 154 of 197
+res 220
+Calculating machine 155 of 197
+res 217
+Calculating machine 156 of 197
+res 51
+Calculating machine 157 of 197
+res 79
+Calculating machine 158 of 197
+res 45
+Calculating machine 159 of 197
+res 241
+Calculating machine 160 of 197
+res 271
+Calculating machine 161 of 197
+res 56
+Calculating machine 162 of 197
+res 197
+Calculating machine 163 of 197
+res 53
+Calculating machine 164 of 197
+res 56
+Calculating machine 165 of 197
+res 110
+Calculating machine 166 of 197
+res 291
+Calculating machine 167 of 197
+res 60
+Calculating machine 168 of 197
+res 178
+Calculating machine 169 of 197
+res 149
+Calculating machine 170 of 197
+res 42
+Calculating machine 171 of 197
+res 28
+Calculating machine 172 of 197
+res 23
+Calculating machine 173 of 197
+res 45
+Calculating machine 174 of 197
+res 60
+Calculating machine 175 of 197
+res 53
+Calculating machine 176 of 197
+res 15
+Calculating machine 177 of 197
+res 224
+Calculating machine 178 of 197
+res 255
+Calculating machine 179 of 197
+res 48
+Calculating machine 180 of 197
+res 94
+Calculating machine 181 of 197
+res 62
+Calculating machine 182 of 197
+res 61
+Calculating machine 183 of 197
+res 209
+Calculating machine 184 of 197
+res 14
+Calculating machine 185 of 197
+res 61
+Calculating machine 186 of 197
+res 31
+Calculating machine 187 of 197
+res 191
+Calculating machine 188 of 197
+res 75
+Calculating machine 189 of 197
+res 209
+Calculating machine 190 of 197
+res 85
+Calculating machine 191 of 197
+res 260
+Calculating machine 192 of 197
+res 166
+Calculating machine 193 of 197
+res 70
+Calculating machine 194 of 197
+res 81
+Calculating machine 195 of 197
+res 115
+Calculating machine 196 of 197
+res 194
+Calculating machine 197 of 197
+res 71
+SolveB -> Time: 1134404417 탎
+AfterSolve -> Time: 125 탎
+}
+
+function TButtonSorter.DetermineRarestButtonCount(aButtonList: TList<integer>): integer;
+var
+  ButtonId: integer;
+begin
+  result := MaxInt;
+  for ButtonId in aButtonList do
+    Result := min(Result, ButtonCounts[ButtonId]);
+end;
+
+function TButtonSorter.Compare(const Left, Right: TList<integer>): Integer;
+begin
+  Result := sign(DetermineRarestButtonCount(Left) - DetermineRarestButtonCount(Right));
+  if Result = 0 then
+    Result := - Sign(Left.Count - Right.Count)
+
+
+end;
 
 constructor TMachine.Create(s: string);
 var
   s2: string;
   split, split2: tStringDynArray;
-//  TargetLights: integer;
   i, button: Integer;
-//  Buttons: TList<integer>;
+  tmpButtons: TList<integer>;
 begin
-//  ButtonList := TObjectList<TList<integer>>.Create;
+  ButtonList := TObjectList<TList<integer>>.Create;
   Buttons := TList<integer>.Create;
-//  DesiredJolts := TList<integer>.Create;
+  DesiredJolts := TList<integer>.Create;
   DesiredLights := 0;
 
   Split := SplitString(s, ' ');
@@ -917,43 +1341,230 @@ begin
   for i := 1 to Length(split) -2 do
   begin
     split2 := SplitString(Copy(Split[i], 2, Split[i].Length-2) , ',');
+
     button := 0;
+    tmpButtons := TList<integer>.Create;
     for s2 in split2 do
+    begin
       button := button + 1 shl (s2.ToInteger());
+      tmpButtons.Add(s2.ToInteger);
+    end;
+
     Buttons.Add(button);
+    ButtonList.Add(tmpButtons);
   end;
+
+  i := Length(split) -1;
+  split2 := SplitString(Copy(Split[i], 2, Split[i].Length-2) , ',');
+  for s2 in split2 do
+    DesiredJolts.Add(s2.ToInteger);
 end;
 
 destructor TMachine.Destroy;
 begin
-//  ButtonList.Free;
+  ButtonList.Free;
   Buttons.Free;
-//  DesiredJolts.Free;
+  DesiredJolts.Free;
 end;
 
-function TMachine.CalcButtonPresses: integer;
+function TMachine.ConfigureIndicatorLights: integer;
 
-  function UseSwitch(const currentIdx, currentLight, buttenPresses: integer): integer;
+  function UseSwitch(const currentIdx, currentLight, buttonPresses: integer): integer;
   begin
     if currentLight = DesiredLights then
-      Exit(buttenPresses);
+      Exit(buttonPresses);
 
     if currentIdx > Buttons.Count-1 then
       exit(maxInt);
 
     Result := min(
-      UseSwitch(currentIdx + 1, currentLight, buttenPresses),
-      UseSwitch(currentIdx + 1, currentLight xor buttons[currentIdx], buttenPresses + 1));
+      UseSwitch(currentIdx + 1, currentLight, buttonPresses),
+      UseSwitch(currentIdx + 1, currentLight xor buttons[currentIdx], buttonPresses + 1));
   end;
 
 begin
   Result := UseSwitch(0,0,0);
 end;
 
+function TMachine.ConfigureJoltageIndicators: integer;
+var
+//  SortedButtons := TList<TList<integer>>;
+  ButtonSet: TList<integer>;
+  FinalButtons: TList<TList<boolean>>;
+  tmpFinalButtons: TList<boolean>;
+  ButtonCounts: TDictionary<integer, integer>;
+  ButtonId, ButtonCount: integer;
+  ButtonSorter: TButtonSorter;
+  i: integer;
+  BestResult: integer;
+  CurrentJoltage: Array of integer;
+  ButtonsPressed: Array of integer;
+  DesiredJoltsArray: TArray<integer>;
+
+  function IsFinalButton(aFromRow, aButtonId: integer): Boolean;
+  var
+    i: integer;
+  begin
+    Result := True;
+    for i := aFromRow to ButtonList.Count-1 do
+      if ButtonList[i].Contains(aButtonId) then
+        Exit(false);
+  end;
+
+  procedure WriteButtonStat(aButtonId: integer);
+  var s: string;
+  i: integer;
+  begin
+    s := '(' ;
+    for i in ButtonList[aButtonId] do
+      s := s + i.ToString +  ' ';
+    s := s + ')';
+
+    WriteLn(ButtonsPressed[aButtonId], ' -> ', s);
+  end;
+
+  function Calculate(aPresses, currentButtonIdx: integer): integer;
+  var
+    MinNoOfPressesNeeded, i: integer;
+    Ok: Boolean;
+    ButtonId: Integer;
+    MinNoOfPressesToDo, MaxNoOfPressesToDo: integer;
+  begin
+    Ok := True;
+    MinNoOfPressesNeeded := 0;
+    Result := MaxINt;
+
+    for i := 0 to DesiredJolts.Count-1 do
+    begin
+      ok := ok and (CurrentJoltage[i] = DesiredJoltsArray[i]);
+      if DesiredJoltsArray[i] < CurrentJoltage[i] then
+        Exit(MaxInt);
+
+      MinNoOfPressesNeeded := Max(MinNoOfPressesNeeded, DesiredJoltsArray[i] - CurrentJoltage[i]);
+    end;
+
+    if Ok then
+    begin
+      WriteLn('Found in ', aPresses);
+//      for I := 0 to ButtonList.Count-1 do
+//        WriteButtonStat(i);
+
+      BestResult := min(BestResult, aPresses);
+      Exit(BestResult);
+    end;
+
+    if currentButtonIdx > ButtonList.Count-1 then
+      Exit(MaxInt);
+
+    if MinNoOfPressesNeeded < 0 then
+      Exit(MaxInt);
+
+    if (aPresses + MinNoOfPressesNeeded) >= BestResult  then
+      Exit(MaxInt);
+
+    MinNoOfPressesToDo := 0;
+    MaxNoOfPressesToDo := MaxInt;
+    for ButtonId in ButtonList[currentButtonIdx] do
+    begin
+      if FinalButtons[currentButtonIdx][ButtonId] then
+      begin
+        MinNoOfPressesToDo := DesiredJoltsArray[ButtonId] - CurrentJoltage[ButtonId];
+        MaxNoOfPressesToDo := MinNoOfPressesToDo;
+        break;
+      end;
+
+      MaxNoOfPressesToDo := min(MaxNoOfPressesToDo, DesiredJoltsArray[ButtonId] - CurrentJoltage[ButtonId]);
+    end;
+
+    if MinNoOfPressesToDo < 0 then
+      Exit(MaxInt);
+
+    Assert(MaxNoOfPressesToDo <> MaxInt);
+    Assert(MinNoOfPressesToDo >= 0);
+
+
+    for i := MaxNoOfPressesToDo downto MinNoOfPressesToDo do
+    begin
+      for ButtonId in ButtonList[currentButtonIdx] do
+        CurrentJoltage[ButtonId] := CurrentJoltage[ButtonId] + i;
+//      ButtonsPressed[currentButtonIdx] := i;
+      Result := min(Result, Calculate(aPresses + i, currentButtonIdx + 1));
+      for ButtonId in ButtonList[currentButtonIdx] do
+        CurrentJoltage[ButtonId] := CurrentJoltage[ButtonId] - i;
+    end;
+
+
+
+
+
+
+
+
+
+
+  end;
+
+
+
+begin
+  DesiredJoltsArray := DesiredJolts.ToArray;
+
+  // Order buttons;
+  ButtonCounts := TDictionary<integer, integer>.Create;
+  for ButtonSet in ButtonList do
+    for ButtonId in ButtonSet do
+    begin
+      ButtonCounts.TryGetValue(ButtonId, ButtonCount);
+      ButtonCounts.AddOrSetValue(ButtonId, ButtonCount + 1);
+    end;
+
+  ButtonSorter := TButtonSorter.Create;
+  ButtonSorter.ButtonCounts := ButtonCounts;
+
+//  SortedButtons := TList<TList<integer>>.Create(ButtonSorter);
+//  SortedButtons.AddRange(Buttons);
+  ButtonList.Sort(ButtonSorter);
+
+  FinalButtons := TList<TList<boolean>>.Create;
+  for i := 0 to ButtonList.Count -1 do
+  begin
+    tmpFinalButtons := TList<boolean>.Create;
+    for buttonId := 0 to desiredJolts.Count-1 do
+      tmpFinalButtons.Add(IsFinalButton(i+1, ButtonId));
+    finalButtons.Add(tmpFinalButtons);
+  end;
+
+  SetLength(CurrentJoltage, DesiredJolts.Count);
+  BestResult := MaxInt;
+
+  SetLength(ButtonsPressed, Buttons.Count);
+
+  Result := Calculate(0,0)
+
+
+
+
+
+
+
+
+
+
+
+
+end;
+
 procedure TAdventOfCodeDay10.BeforeSolve;
 var
   s: string;
 begin
+//  FInput.Clear;
+//  FInput.Add('[...#.] (2,3,4) (1,2) (1,2,3,4) (0,2,3) (3) (0,3,4) {194,25,212,218,39}');
+
+//  FInput.Add('[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}');
+//  FInput.Add('[...#.] (0,2,3,4) (2,3) (0,4) (0,1,2) (1,2,3,4) {7,5,12,7,2}');
+//  FInput.Add('[.###.#] (0,1,2,3,4) (0,3,4) (0,1,2,4,5) (1,2) {10,11,11,5,10,5}');
+
   inherited;
   Machines := TObjectList<TMachine>.Create();
   for s in FInput do
@@ -971,19 +1582,25 @@ var
   Machine: TMachine;
 begin
   result := 0;
-
   for Machine in Machines do
-    inc(Result, Machine.CalcButtonPresses);
+    inc(Result, Machine.ConfigureIndicatorLights);
 end;
 
 function TAdventOfCodeDay10.SolveB: Variant;
+var
+  Machine: TMachine;
+  i, j: integer;
 begin
-// FInput.Clear;
-// FInput.Add('[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}');
-// FInput.Add('[...#.] (0,2,3,4) (2,3) (0,4) (0,1,2) (1,2,3,4) {7,5,12,7,2}');
-// FInput.Add('[.###.#] (0,1,2,3,4) (0,3,4) (0,1,2,4,5) (1,2) {10,11,11,5,10,5}');
-  Result := null;
-
+  result := 0;
+  i := 0;
+  for Machine in Machines do
+  begin
+    inc(i);
+    WriteLn('Calculating machine ', i, ' of ', Machines.Count);
+    j := Machine.ConfigureJoltageIndicators;
+    WriteLn('res ', j);
+    inc(Result, j);
+  end;
 
 end;
 {$ENDREGION}
