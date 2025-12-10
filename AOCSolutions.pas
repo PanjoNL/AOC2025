@@ -108,6 +108,27 @@ type
     function SolveB: Variant; override;
   end;
 
+  TMachine = class
+//    ButtonList: TList<TList<integer>>;
+    Buttons{, DesiredJolts}: TList<integer>;
+    DesiredLights: integer;
+
+  public
+    constructor Create(s: string);
+    destructor Destroy; override;
+
+    function  CalcButtonPresses: integer;
+  end;
+
+  TAdventOfCodeDay10 = class(TAdventOfCode)
+  private
+    Machines: TList<TMachine>;
+  protected
+    procedure BeforeSolve; override;
+    procedure AfterSolve; override;
+    function SolveA: Variant; override;
+    function SolveB: Variant; override;
+  end;
 
 
   TAdventOfCodeDay = class(TAdventOfCode)
@@ -872,6 +893,100 @@ begin
   Result := ResultB;
 end;
 {$ENDREGION}
+{$REGION 'TAdventOfCodeDay10'}
+{ TMachine }
+
+constructor TMachine.Create(s: string);
+var
+  s2: string;
+  split, split2: tStringDynArray;
+//  TargetLights: integer;
+  i, button: Integer;
+//  Buttons: TList<integer>;
+begin
+//  ButtonList := TObjectList<TList<integer>>.Create;
+  Buttons := TList<integer>.Create;
+//  DesiredJolts := TList<integer>.Create;
+  DesiredLights := 0;
+
+  Split := SplitString(s, ' ');
+  for i := 2 to Length(split[0])-1 do
+    if split[0][i] = '#' then
+      DesiredLights := DesiredLights + 1 shl (i-2);
+
+  for i := 1 to Length(split) -2 do
+  begin
+    split2 := SplitString(Copy(Split[i], 2, Split[i].Length-2) , ',');
+    button := 0;
+    for s2 in split2 do
+      button := button + 1 shl (s2.ToInteger());
+    Buttons.Add(button);
+  end;
+end;
+
+destructor TMachine.Destroy;
+begin
+//  ButtonList.Free;
+  Buttons.Free;
+//  DesiredJolts.Free;
+end;
+
+function TMachine.CalcButtonPresses: integer;
+
+  function UseSwitch(const currentIdx, currentLight, buttenPresses: integer): integer;
+  begin
+    if currentLight = DesiredLights then
+      Exit(buttenPresses);
+
+    if currentIdx > Buttons.Count-1 then
+      exit(maxInt);
+
+    Result := min(
+      UseSwitch(currentIdx + 1, currentLight, buttenPresses),
+      UseSwitch(currentIdx + 1, currentLight xor buttons[currentIdx], buttenPresses + 1));
+  end;
+
+begin
+  Result := UseSwitch(0,0,0);
+end;
+
+procedure TAdventOfCodeDay10.BeforeSolve;
+var
+  s: string;
+begin
+  inherited;
+  Machines := TObjectList<TMachine>.Create();
+  for s in FInput do
+    Machines.Add(TMachine.Create(s));
+end;
+
+procedure TAdventOfCodeDay10.AfterSolve;
+begin
+  inherited;
+  Machines.Free;
+end;
+
+function TAdventOfCodeDay10.SolveA: Variant;
+var
+  Machine: TMachine;
+begin
+  result := 0;
+
+  for Machine in Machines do
+    inc(Result, Machine.CalcButtonPresses);
+end;
+
+function TAdventOfCodeDay10.SolveB: Variant;
+begin
+// FInput.Clear;
+// FInput.Add('[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}');
+// FInput.Add('[...#.] (0,2,3,4) (2,3) (0,4) (0,1,2) (1,2,3,4) {7,5,12,7,2}');
+// FInput.Add('[.###.#] (0,1,2,3,4) (0,3,4) (0,1,2,4,5) (1,2) {10,11,11,5,10,5}');
+  Result := null;
+
+
+end;
+{$ENDREGION}
 
 {$REGION 'TAdventOfCodeDay'}
 procedure TAdventOfCodeDay.BeforeSolve;
@@ -899,6 +1014,6 @@ initialization
 
 RegisterClasses([
   TAdventOfCodeDay1,TAdventOfCodeDay2,TAdventOfCodeDay3,TAdventOfCodeDay4,TAdventOfCodeDay5,
-  TAdventOfCodeDay6,TAdventOfCodeDay7,TAdventOfCodeDay8,TAdventOfCodeDay9]);
+  TAdventOfCodeDay6,TAdventOfCodeDay7,TAdventOfCodeDay8,TAdventOfCodeDay9,TAdventOfCodeDay10]);
 
 end.
