@@ -131,6 +131,19 @@ type
     function SolveB: Variant; override;
   end;
 
+  TAdventOfCodeDay11 = class(TAdventOfCode)
+  private
+    Paths: TDictionary<word, TList<word>>;
+    function FindPath(const aFrom, aTo: string): int64;
+    function CreateKey(const aKey: string; CharCountToRemove: integer =0): word;
+  protected
+    procedure BeforeSolve; override;
+    procedure AfterSolve; override;
+    function SolveA: Variant; override;
+    function SolveB: Variant; override;
+  end;
+
+
   TAdventOfCodeDay = class(TAdventOfCode)
   private
   protected
@@ -1395,7 +1408,7 @@ var
   ButtonCounts: TDictionary<integer, integer>;
   ButtonId, ButtonCount: integer;
   ButtonSorter: TButtonSorter;
-  i: integer;
+  i, j: integer;
   BestResult: integer;
   CurrentJoltage: Array of integer;
   ButtonsPressed: Array of integer;
@@ -1446,8 +1459,8 @@ var
     if Ok then
     begin
       WriteLn('Found in ', aPresses);
-//      for I := 0 to ButtonList.Count-1 do
-//        WriteButtonStat(i);
+      for I := 0 to ButtonList.Count-1 do
+        WriteButtonStat(i);
 
       BestResult := min(BestResult, aPresses);
       Exit(BestResult);
@@ -1487,24 +1500,15 @@ var
     begin
       for ButtonId in ButtonList[currentButtonIdx] do
         CurrentJoltage[ButtonId] := CurrentJoltage[ButtonId] + i;
-//      ButtonsPressed[currentButtonIdx] := i;
+      ButtonsPressed[currentButtonIdx] := i;
       Result := min(Result, Calculate(aPresses + i, currentButtonIdx + 1));
       for ButtonId in ButtonList[currentButtonIdx] do
         CurrentJoltage[ButtonId] := CurrentJoltage[ButtonId] - i;
     end;
 
-
-
-
-
-
-
-
-
-
   end;
 
-
+var s: string;
 
 begin
   DesiredJoltsArray := DesiredJolts.ToArray;
@@ -1539,7 +1543,22 @@ begin
 
   SetLength(ButtonsPressed, Buttons.Count);
 
-  Result := Calculate(0,0)
+
+  // 21709 to low
+
+
+  WriteLn('SortedButtons');
+  for i := 0 to ButtonList.Count-1 do
+  begin
+    s := '';
+    for j := 0 to ButtonList[i].Count-1 do
+      s := s + ',' + ButtonList[i][j].ToString;
+    WriteLn(s);
+  end;
+
+  Result := Calculate(0,0);
+
+
 
 
 
@@ -1558,8 +1577,8 @@ procedure TAdventOfCodeDay10.BeforeSolve;
 var
   s: string;
 begin
-//  FInput.Clear;
-//  FInput.Add('[...#.] (2,3,4) (1,2) (1,2,3,4) (0,2,3) (3) (0,3,4) {194,25,212,218,39}');
+  FInput.Clear;
+  FInput.Add('[.###...##.] (8) (0,3,4,5,6,7,8,9) (0,4,5,9) (0,1,2,3,5,7,8) (2,3,4,5,6,7,9) (1,2,3,6,7,9) (0,1,2,3,4,5,7,8) (2,3,5,8,9) (6,8,9) (1,2,3,4,5,6,7,9) (1,4,6,8,9) (0,3,6,9) (0,2,3,7) {65,50,69,97,72,86,95,82,68,117}');
 
 //  FInput.Add('[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}');
 //  FInput.Add('[...#.] (0,2,3,4) (2,3) (0,4) (0,1,2) (1,2,3,4) {7,5,12,7,2}');
@@ -1604,6 +1623,86 @@ begin
 
 end;
 {$ENDREGION}
+{$REGION 'TAdventOfCodeDay11'}
+procedure TAdventOfCodeDay11.BeforeSolve;
+var
+  s: string;
+  i: integer;
+  Split: TStringDynArray;
+  tmpPaths: TList<word>;
+begin
+  inherited;
+  Paths := TObjectDictionary<word, TList<word>>.Create([doOwnsValues]);
+  for s in FInput do
+  begin
+    Split := SplitString(s, ' ');
+    tmpPaths := TList<word>.Create;
+    Paths.Add(CreateKey(Split[0], 1), tmpPaths);
+    for i := 1 to Length(Split)-1 do
+      tmpPaths.Add(CreateKey(Split[i]));
+  end;
+end;
+
+function TAdventOfCodeDay11.CreateKey(const aKey: string; CharCountToRemove: integer): word;
+const
+  a: integer = ord('a');
+var
+  i: integer;
+begin
+  Result := 0;
+  for i := 1 to Length(aKey) - CharCountToRemove do
+    Result := (Result shl 5) + ord(aKey[i]) - a;
+end;
+
+procedure TAdventOfCodeDay11.AfterSolve;
+begin
+  inherited;
+  Paths.Free;
+end;
+
+function TAdventOfCodeDay11.FindPath(const aFrom, aTo: string): int64;
+var
+  Seen: TDictionary<integer, int64>;
+
+  function InternalCalcPath(const aFrom, aTo: word): int64;
+  var
+    tmpPaths: TList<word>;
+    nextNode: word;
+  begin
+    if aFrom = aTo then
+      Exit(1);
+
+    if Seen.TryGetValue(afrom, Result) then
+      Exit;
+
+    Result := 0;
+    if not Paths.TryGetValue(aFrom, tmpPaths) then
+      Exit;
+
+    for nextNode in tmpPaths do
+      Result := Result + InternalCalcPath(nextNode, aTo);
+
+    Seen.Add(aFrom, Result);
+  end;
+
+begin
+  Seen := TDictionary<integer, int64>.Create;
+  Result := InternalCalcPath(CreateKey(aFrom), CreateKey(aTo));
+  Seen.Free;
+end;
+
+function TAdventOfCodeDay11.SolveA: Variant;
+begin
+  result := FindPath('you', 'out');
+end;
+
+function TAdventOfCodeDay11.SolveB: Variant;
+begin
+  Result :=
+    (FindPath('svr', 'fft') * FindPath('fft', 'dac') * FindPath('dac', 'out')) +
+    (FindPath('svr', 'dac') * FindPath('dac', 'fft') * FindPath('fft', 'out'));
+end;
+{$ENDREGION}
 
 {$REGION 'TAdventOfCodeDay'}
 procedure TAdventOfCodeDay.BeforeSolve;
@@ -1627,10 +1726,13 @@ begin
 end;
 {$ENDREGION}
 
+
+
 initialization
 
 RegisterClasses([
   TAdventOfCodeDay1,TAdventOfCodeDay2,TAdventOfCodeDay3,TAdventOfCodeDay4,TAdventOfCodeDay5,
-  TAdventOfCodeDay6,TAdventOfCodeDay7,TAdventOfCodeDay8,TAdventOfCodeDay9,TAdventOfCodeDay10]);
+  TAdventOfCodeDay6,TAdventOfCodeDay7,TAdventOfCodeDay8,TAdventOfCodeDay9,TAdventOfCodeDay10,
+  TAdventOfCodeDay11]);
 
 end.
