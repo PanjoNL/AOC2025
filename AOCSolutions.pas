@@ -112,7 +112,7 @@ type
     ButtonList: TList<TList<integer>>;
     Buttons, DesiredJolts: TList<integer>;
     DesiredLights: integer;
-
+    ButtonCount: integer;
   public
     constructor Create(s: string);
     destructor Destroy; override;
@@ -908,10 +908,12 @@ end;
 {$ENDREGION}
 {$REGION 'TAdventOfCodeDay10'}
 type
+
   TButtonSorter = class (TInterfacedObject, IComparer<TList<integer>>)
-    ButtonCounts: TDictionary<integer, integer>;
+    ButtonCounts: IntegerArray;
     function Compare(const Left, Right: TList<integer>): Integer;
     function DetermineRarestButtonCount(aButtonList: TList<integer>): integer;
+    function CountRareButtons(aButtonList: TList<integer>; aRareCount: integer): integer;
   end;
 
 {
@@ -1316,6 +1318,19 @@ SolveB -> Time: 1134404417 µs
 AfterSolve -> Time: 125 µs
 }
 
+
+
+function TButtonSorter.CountRareButtons(aButtonList: TList<integer>; aRareCount: integer): integer;
+var
+  ButtonId: integer;
+begin
+  Result := 0;
+  for ButtonId in aButtonList do
+    if ButtonCounts[ButtonId] = aRareCount then
+      Inc(Result);
+
+end;
+
 function TButtonSorter.DetermineRarestButtonCount(aButtonList: TList<integer>): integer;
 var
   ButtonId: integer;
@@ -1326,12 +1341,18 @@ begin
 end;
 
 function TButtonSorter.Compare(const Left, Right: TList<integer>): Integer;
+var
+  MostRareLeft: integer;
 begin
-  Result := sign(DetermineRarestButtonCount(Left) - DetermineRarestButtonCount(Right));
+  MostRareLeft := DetermineRarestButtonCount(Left);
+
+  Result := sign(MostRareLeft - DetermineRarestButtonCount(Right));
+
   if Result = 0 then
-    Result := - Sign(Left.Count - Right.Count)
+    Result := -sign(CountRareButtons(Left, MostRareLeft) - CountRareButtons(Right, MostRareLeft));
 
-
+  if Result = 0 then
+    Result := -Sign(Left.Count - Right.Count)
 end;
 
 constructor TMachine.Create(s: string);
@@ -1371,6 +1392,7 @@ begin
   split2 := SplitString(Copy(Split[i], 2, Split[i].Length-2) , ',');
   for s2 in split2 do
     DesiredJolts.Add(s2.ToInteger);
+  ButtonCount := DesiredJolts.Count;
 end;
 
 destructor TMachine.Destroy;
@@ -1401,18 +1423,16 @@ end;
 
 function TMachine.ConfigureJoltageIndicators: integer;
 var
-//  SortedButtons := TList<TList<integer>>;
   ButtonSet: TList<integer>;
-  FinalButtons: TList<TList<boolean>>;
-  tmpFinalButtons: TList<boolean>;
-  ButtonCounts: TDictionary<integer, integer>;
-  ButtonId, ButtonCount: integer;
+  FinalButtons: IntegerArray;
+  ButtonCounts: IntegerArray;
+  ButtonId: integer;
   ButtonSorter: TButtonSorter;
   i, j: integer;
   BestResult: integer;
   CurrentJoltage: Array of integer;
-  ButtonsPressed: Array of integer;
-  DesiredJoltsArray: TArray<integer>;
+//  ButtonsPressed: Array of integer;
+  ButtonArray: Array of TArray<integer>;
 
   function IsFinalButton(aFromRow, aButtonId: integer): Boolean;
   var
@@ -1424,17 +1444,17 @@ var
         Exit(false);
   end;
 
-  procedure WriteButtonStat(aButtonId: integer);
-  var s: string;
-  i: integer;
-  begin
-    s := '(' ;
-    for i in ButtonList[aButtonId] do
-      s := s + i.ToString +  ' ';
-    s := s + ')';
-
-    WriteLn(ButtonsPressed[aButtonId], ' -> ', s);
-  end;
+//  procedure WriteButtonStat(aButtonId: integer);
+//  var s: string;
+//  i: integer;
+//  begin
+//    s := '(' ;
+//    for i in ButtonList[aButtonId] do
+//      s := s + i.ToString +  ' ';
+//    s := s + ')';
+//
+//    WriteLn(ButtonsPressed[aButtonId], ' -> ', s);
+//  end;
 
   function Calculate(aPresses, currentButtonIdx: integer): integer;
   var
@@ -1447,20 +1467,21 @@ var
     MinNoOfPressesNeeded := 0;
     Result := MaxINt;
 
-    for i := 0 to DesiredJolts.Count-1 do
+    for i := 0 to ButtonCount-1 do
     begin
-      ok := ok and (CurrentJoltage[i] = DesiredJoltsArray[i]);
-      if DesiredJoltsArray[i] < CurrentJoltage[i] then
+      ok := ok and (CurrentJoltage[i] = 0);
+
+      if CurrentJoltage[i] < 0 then
         Exit(MaxInt);
 
-      MinNoOfPressesNeeded := Max(MinNoOfPressesNeeded, DesiredJoltsArray[i] - CurrentJoltage[i]);
+      MinNoOfPressesNeeded := Max(MinNoOfPressesNeeded, CurrentJoltage[i]);
     end;
 
     if Ok then
     begin
-      WriteLn('Found in ', aPresses);
-      for I := 0 to ButtonList.Count-1 do
-        WriteButtonStat(i);
+//      WriteLn('Found in ', aPresses);
+//      for I := 0 to ButtonList.Count-1 do
+//        WriteButtonStat(i);
 
       BestResult := min(BestResult, aPresses);
       Exit(BestResult);
@@ -1469,24 +1490,22 @@ var
     if currentButtonIdx > ButtonList.Count-1 then
       Exit(MaxInt);
 
-    if MinNoOfPressesNeeded < 0 then
-      Exit(MaxInt);
-
     if (aPresses + MinNoOfPressesNeeded) >= BestResult  then
       Exit(MaxInt);
 
+
     MinNoOfPressesToDo := 0;
     MaxNoOfPressesToDo := MaxInt;
-    for ButtonId in ButtonList[currentButtonIdx] do
+    for ButtonId in ButtonArray[currentButtonIdx] do
     begin
-      if FinalButtons[currentButtonIdx][ButtonId] then
+      if ((FinalButtons[currentButtonIdx] shr buttonId) and 1) = 1 then
       begin
-        MinNoOfPressesToDo := DesiredJoltsArray[ButtonId] - CurrentJoltage[ButtonId];
+        MinNoOfPressesToDo := CurrentJoltage[ButtonId];
         MaxNoOfPressesToDo := MinNoOfPressesToDo;
         break;
       end;
 
-      MaxNoOfPressesToDo := min(MaxNoOfPressesToDo, DesiredJoltsArray[ButtonId] - CurrentJoltage[ButtonId]);
+      MaxNoOfPressesToDo := min(MaxNoOfPressesToDo, CurrentJoltage[ButtonId]);
     end;
 
     if MinNoOfPressesToDo < 0 then
@@ -1495,66 +1514,62 @@ var
     Assert(MaxNoOfPressesToDo <> MaxInt);
     Assert(MinNoOfPressesToDo >= 0);
 
-
     for i := MaxNoOfPressesToDo downto MinNoOfPressesToDo do
     begin
-      for ButtonId in ButtonList[currentButtonIdx] do
-        CurrentJoltage[ButtonId] := CurrentJoltage[ButtonId] + i;
-      ButtonsPressed[currentButtonIdx] := i;
-      Result := min(Result, Calculate(aPresses + i, currentButtonIdx + 1));
-      for ButtonId in ButtonList[currentButtonIdx] do
+      for ButtonId in ButtonArray[currentButtonIdx] do
         CurrentJoltage[ButtonId] := CurrentJoltage[ButtonId] - i;
+//      ButtonsPressed[currentButtonIdx] := i;
+      Result := min(Result, Calculate(aPresses + i, currentButtonIdx + 1));
+      for ButtonId in ButtonArray[currentButtonIdx] do
+        CurrentJoltage[ButtonId] := CurrentJoltage[ButtonId] + i;
     end;
-
   end;
 
 var s: string;
 
 begin
-  DesiredJoltsArray := DesiredJolts.ToArray;
-
-  // Order buttons;
-  ButtonCounts := TDictionary<integer, integer>.Create;
+  // Order buttons based on the most rare digit
+  SetLength(ButtonCounts, ButtonCount);
   for ButtonSet in ButtonList do
     for ButtonId in ButtonSet do
-    begin
-      ButtonCounts.TryGetValue(ButtonId, ButtonCount);
-      ButtonCounts.AddOrSetValue(ButtonId, ButtonCount + 1);
-    end;
+      ButtonCounts[ButtonId] := ButtonCounts[ButtonId] + 1;
 
   ButtonSorter := TButtonSorter.Create;
   ButtonSorter.ButtonCounts := ButtonCounts;
-
-//  SortedButtons := TList<TList<integer>>.Create(ButtonSorter);
-//  SortedButtons.AddRange(Buttons);
   ButtonList.Sort(ButtonSorter);
 
-  FinalButtons := TList<TList<boolean>>.Create;
+  SetLength(FinalButtons, ButtonList.Count);
+  SetLength(ButtonArray, ButtonList.Count);
   for i := 0 to ButtonList.Count -1 do
   begin
-    tmpFinalButtons := TList<boolean>.Create;
+    // Convert buttons to an array for faster indexing;
+    ButtonArray[i] := ButtonList[i].ToArray;
+
+    // Determine if this is the last time a button is seen in the orderd buttons
     for buttonId := 0 to desiredJolts.Count-1 do
-      tmpFinalButtons.Add(IsFinalButton(i+1, ButtonId));
-    finalButtons.Add(tmpFinalButtons);
+      if IsFinalButton(i+1, ButtonId) then
+        FinalButtons[i] := FinalButtons[i] + 1 shl ButtonId;
   end;
 
   SetLength(CurrentJoltage, DesiredJolts.Count);
+  for i := 0 to ButtonCount -1 do
+    CurrentJoltage[i] := DesiredJolts[i];
+
   BestResult := MaxInt;
 
-  SetLength(ButtonsPressed, Buttons.Count);
+//  SetLength(ButtonsPressed, Buttons.Count);
 
 
-  // 21709 to low
 
 
-  WriteLn('SortedButtons');
-  for i := 0 to ButtonList.Count-1 do
-  begin
-    s := '';
-    for j := 0 to ButtonList[i].Count-1 do
-      s := s + ',' + ButtonList[i][j].ToString;
-    WriteLn(s);
-  end;
+//  WriteLn('SortedButtons');
+//  for i := 0 to ButtonList.Count-1 do
+//  begin
+//    s := '';
+//    for j := 0 to ButtonList[i].Count-1 do
+//      s := s + ',' + ButtonList[i][j].ToString;
+//    WriteLn(s);
+//  end;
 
   Result := Calculate(0,0);
 
@@ -1577,8 +1592,8 @@ procedure TAdventOfCodeDay10.BeforeSolve;
 var
   s: string;
 begin
-  FInput.Clear;
-  FInput.Add('[.###...##.] (8) (0,3,4,5,6,7,8,9) (0,4,5,9) (0,1,2,3,5,7,8) (2,3,4,5,6,7,9) (1,2,3,6,7,9) (0,1,2,3,4,5,7,8) (2,3,5,8,9) (6,8,9) (1,2,3,4,5,6,7,9) (1,4,6,8,9) (0,3,6,9) (0,2,3,7) {65,50,69,97,72,86,95,82,68,117}');
+//  FInput.Clear;
+//  FInput.Add('[.###...##.] (8) (0,3,4,5,6,7,8,9) (0,4,5,9) (0,1,2,3,5,7,8) (2,3,4,5,6,7,9) (1,2,3,6,7,9) (0,1,2,3,4,5,7,8) (2,3,5,8,9) (6,8,9) (1,2,3,4,5,6,7,9) (1,4,6,8,9) (0,3,6,9) (0,2,3,7) {65,50,69,97,72,86,95,82,68,117}');
 
 //  FInput.Add('[.##.] (3) (1,3) (2) (2,3) (0,2) (0,1) {3,5,4,7}');
 //  FInput.Add('[...#.] (0,2,3,4) (2,3) (0,4) (0,1,2) (1,2,3,4) {7,5,12,7,2}');
@@ -1609,17 +1624,36 @@ function TAdventOfCodeDay10.SolveB: Variant;
 var
   Machine: TMachine;
   i, j: integer;
+  TotalResult: Integer;
 begin
   result := 0;
-  i := 0;
-  for Machine in Machines do
-  begin
-    inc(i);
-    WriteLn('Calculating machine ', i, ' of ', Machines.Count);
-    j := Machine.ConfigureJoltageIndicators;
-    WriteLn('res ', j);
-    inc(Result, j);
-  end;
+//  i := 0;
+//  for Machine in Machines do
+//  begin
+//    inc(i);
+//    WriteLn('Calculating machine ', i, ' of ', Machines.Count);
+//    j := Machine.ConfigureJoltageIndicators;
+//    WriteLn('res ', j);
+//    inc(Result, j);
+//  end;
+
+//  var
+//  Result: Integer;
+//begin
+
+  TotalResult := 0;
+
+  TParallel.For(0, Machines.Count - 1,
+    procedure(i: Integer)
+    var
+      r: Integer;
+    begin
+      r := Machines[i].ConfigureJoltageIndicators;
+      TInterlocked.Add(TotalResult, r);
+    end
+  );
+
+  Result := TotalResult;
 
 end;
 {$ENDREGION}
