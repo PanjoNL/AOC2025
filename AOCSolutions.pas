@@ -143,14 +143,9 @@ type
     function SolveB: Variant; override;
   end;
 
-
-  TAdventOfCodeDay = class(TAdventOfCode)
-  private
+  TAdventOfCodeDay12 = class(TAdventOfCode)
   protected
-    procedure BeforeSolve; override;
-    procedure AfterSolve; override;
     function SolveA: Variant; override;
-    function SolveB: Variant; override;
   end;
 
 implementation
@@ -1654,7 +1649,6 @@ begin
   );
 
   Result := TotalResult;
-
 end;
 {$ENDREGION}
 {$REGION 'TAdventOfCodeDay11'}
@@ -1737,36 +1731,59 @@ begin
     (FindPath('svr', 'dac') * FindPath('dac', 'fft') * FindPath('fft', 'out'));
 end;
 {$ENDREGION}
-
-{$REGION 'TAdventOfCodeDay'}
-procedure TAdventOfCodeDay.BeforeSolve;
+{$REGION 'TAdventOfCodeDay12'}
+function TAdventOfCodeDay12.SolveA: Variant;
+var
+  Presents: TDictionary<integer, integer>;
+  BoxStartLine, i,PresentId, CellsNeeded: integer;
+  Split: TStringDynArray;
+  j: Integer;
 begin
-  inherited;
-end;
+  Presents := TDictionary<integer, integer>.Create;
+  PresentId := -1;
+  BoxStartLine := FInput.Count;
 
-procedure TAdventOfCodeDay.AfterSolve;
-begin
-  inherited;
+  for i := 0 to FInput.Count -1 do
+  begin
+    if FInput[i] = '' then
+      Continue;
 
-end;
+    if FInput[i].Contains('x') then
+    begin
+      BoxStartLine := i;
+      break;
+    end;
 
-function TAdventOfCodeDay.SolveA: Variant;
-begin
+    if FInput[i].Contains(':') then
+    begin
+      Inc(PresentId);
+      Presents.Add(PresentId, 0);
+      Continue;
+    end;
 
-end;
+    Presents[PresentId] := Presents[PresentId] + OccurrencesOfChar(FInput[i], '#');
+  end;
 
-function TAdventOfCodeDay.SolveB: Variant;
-begin
+  Result := 0;
+  for i := BoxStartLine to FInput.Count-1 do
+  begin
+    Split := SplitString(FInput[i], ':x ');
+
+    CellsNeeded := 0;
+    for j := 3 to Length(Split) -1 do
+      CellsNeeded := CellsNeeded + Split[j].ToInteger * Presents[j-3];
+    if split[0].ToInteger * Split[1].ToInteger >= CellsNeeded then
+      Inc(Result);
+  end;
+  Presents.Free;
 end;
 {$ENDREGION}
-
-
 
 initialization
 
 RegisterClasses([
   TAdventOfCodeDay1,TAdventOfCodeDay2,TAdventOfCodeDay3,TAdventOfCodeDay4,TAdventOfCodeDay5,
   TAdventOfCodeDay6,TAdventOfCodeDay7,TAdventOfCodeDay8,TAdventOfCodeDay9,TAdventOfCodeDay10,
-  TAdventOfCodeDay11]);
+  TAdventOfCodeDay11,TAdventOfCodeDay12]);
 
 end.
